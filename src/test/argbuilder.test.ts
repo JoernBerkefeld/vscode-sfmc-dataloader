@@ -1,6 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildExportArgs, buildImportArgs, buildMultiBuExportArgs, buildCrossBuImportArgs } from '../argbuilder';
+import {
+    buildExportArgs,
+    buildImportArgs,
+    buildMultiBuExportArgs,
+    buildCrossBuImportArgs,
+    buildFileToMultiBuImportArgs,
+} from '../argbuilder';
 
 describe('buildExportArgs', () => {
     it('produces export subcommand with a single DE key', () => {
@@ -218,6 +224,61 @@ describe('buildCrossBuImportArgs', () => {
             acceptClearRisk: false,
         });
         assert.ok(!args.includes('--clear-before-import'));
+        assert.ok(!args.includes('--i-accept-clear-data-risk'));
+    });
+});
+
+describe('buildFileToMultiBuImportArgs', () => {
+    it('produces import with --to flags and --file flags (no --from)', () => {
+        const args = buildFileToMultiBuImportArgs({
+            filePaths: ['/data/org/bu/My_DE+MCDATA+2026-04-08T10-00-00Z.csv'],
+            toCredBus: ['org/QA', 'org/Prod'],
+            format: 'csv',
+            api: 'async',
+            mode: 'upsert',
+            clearBeforeImport: false,
+            acceptClearRisk: false,
+        });
+        assert.equal(args[0], 'import');
+        assert.ok(!args.includes('--from'), '--from must not appear in file mode');
+        assert.ok(!args.includes('--de'), '--de must not appear in file mode');
+        assert.deepEqual(
+            args.filter((_, i, a) => a[i - 1] === '--to'),
+            ['org/QA', 'org/Prod']
+        );
+        assert.deepEqual(
+            args.filter((_, i, a) => a[i - 1] === '--file'),
+            ['/data/org/bu/My_DE+MCDATA+2026-04-08T10-00-00Z.csv']
+        );
+    });
+
+    it('supports multiple files', () => {
+        const args = buildFileToMultiBuImportArgs({
+            filePaths: ['/data/org/bu/DE1+MCDATA+ts.csv', '/data/org/bu/DE2+MCDATA+ts.csv'],
+            toCredBus: ['org/QA'],
+            format: 'csv',
+            api: 'async',
+            mode: 'upsert',
+            clearBeforeImport: false,
+            acceptClearRisk: false,
+        });
+        assert.deepEqual(
+            args.filter((_, i, a) => a[i - 1] === '--file'),
+            ['/data/org/bu/DE1+MCDATA+ts.csv', '/data/org/bu/DE2+MCDATA+ts.csv']
+        );
+    });
+
+    it('appends --clear-before-import when requested', () => {
+        const args = buildFileToMultiBuImportArgs({
+            filePaths: ['/data/org/bu/K+MCDATA+ts.csv'],
+            toCredBus: ['org/QA'],
+            format: 'csv',
+            api: 'async',
+            mode: 'upsert',
+            clearBeforeImport: true,
+            acceptClearRisk: false,
+        });
+        assert.ok(args.includes('--clear-before-import'));
         assert.ok(!args.includes('--i-accept-clear-data-risk'));
     });
 });

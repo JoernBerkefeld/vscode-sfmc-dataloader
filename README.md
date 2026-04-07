@@ -15,16 +15,36 @@ npm install sfmc-dataloader
 
 ## Commands
 
+### Command Palette
+
 | Command | Description |
 |---|---|
 | `SFMC Data: Export DE Data` | Export one or more Data Extension rows to CSV/TSV/JSON |
+| `SFMC Data: Export DE Data (Multi-BU)` | Export from several BUs in one command |
 | `SFMC Data: Import DE Data` | Import rows from a file or by DE key |
+| `SFMC Data: Import DE Data (Cross-BU)` | Import rows from one BU into multiple target BUs via the SFMC API |
 
 Both commands open a guided QuickPick workflow:
 
 1. **Select credential** (skipped when only one exists)
 2. **Select Business Unit** (skipped when only one exists)
 3. **Enter DE key(s)** or **select file(s)**
+
+### Explorer Context Menu
+
+Right-click any of the following files in the VS Code Explorer to access the **SFMC Data Loader** submenu:
+
+- `*.dataExtension-meta.json` or `*.dataExtension-doc.md` under `retrieve/<cred>/<bu>/dataExtension/`
+- `*+MCDATA+*` export files under `data/<cred>/<bu>/`
+
+You can **multi-select** files within the same BU and all commands will operate on them together.
+
+| Context menu item | retrieve/ files | data/ files |
+|---|---|---|
+| **Export Data** | `mcdata export <cred/bu> --de <key>...` | same |
+| **Export from BUs...** | Multi-select source BUs (pre-selects current BU), runs `mcdata export --from ...` | same |
+| **Import Data** | `mcdata import <cred/bu> --de <key>...` (resolves latest export file) | `mcdata import <cred/bu> --file <path>...` |
+| **Import to BU...** | Multi-select target BUs, runs `mcdata import --from <src> --to <tgt>... --de <key>...` | Multi-select target BUs, runs `mcdata import --to <tgt>... --file <path>...` |
 
 The assembled `mcdata` command runs in a dedicated integrated terminal so you can see live output.
 

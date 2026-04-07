@@ -30,3 +30,19 @@ export function getCredentials(mcdevrc: Mcdevrc): string[] {
 export function getBusinessUnits(mcdevrc: Mcdevrc, credential: string): string[] {
     return Object.keys(mcdevrc.credentials?.[credential]?.businessUnits ?? {});
 }
+
+/**
+ * Returns all `"<credential>/<businessUnit>"` pairs from a parsed
+ * .mcdevrc.json object, across every credential.
+ *
+ * @param mcdevrc - parsed .mcdevrc.json
+ */
+export function getAllCredBus(mcdevrc: Mcdevrc): string[] {
+    const result: string[] = [];
+    for (const cred of Object.keys(mcdevrc.credentials ?? {})) {
+        for (const bu of Object.keys(mcdevrc.credentials[cred]?.businessUnits ?? {})) {
+            result.push(`${cred}/${bu}`);
+        }
+    }
+    return result;
+}

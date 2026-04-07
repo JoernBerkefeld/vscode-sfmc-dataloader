@@ -21,6 +21,18 @@ export type MultiBuExportOptions = {
     jsonPretty?: boolean;
 };
 
+export type FileToMultiBuImportOptions = {
+    /** Absolute file paths — maps to repeated `--file` flags */
+    filePaths: string[];
+    /** One or more target `<credential>/<businessUnit>` tokens — maps to repeated `--to` flags */
+    toCredBus: string[];
+    format: string;
+    api: string;
+    mode: string;
+    clearBeforeImport: boolean;
+    acceptClearRisk: boolean;
+};
+
 export type CrossBuImportOptions = {
     /** Single source `<credential>/<businessUnit>` — maps to `--from` */
     fromCredBu: string;
@@ -64,6 +76,31 @@ export function buildMultiBuExportArgs(options: MultiBuExportOptions): string[] 
     }
     if (options.jsonPretty) {
         args.push('--json-pretty');
+    }
+    return args;
+}
+
+/**
+ * Builds the argument list for `mcdata import --to <tgt> [--to <tgt>] --file <path> [--file <path>] ...`.
+ *
+ * Used when the source data is already on disk (data/ export files).
+ * No `--from` is emitted — the DE key is derived from each filename by the CLI.
+ *
+ * @param options - file-to-multi-BU import settings
+ */
+export function buildFileToMultiBuImportArgs(options: FileToMultiBuImportOptions): string[] {
+    const args: string[] = ['import', '--format', options.format, '--api', options.api, '--mode', options.mode];
+    for (const credBu of options.toCredBus) {
+        args.push('--to', credBu);
+    }
+    for (const fp of options.filePaths) {
+        args.push('--file', fp);
+    }
+    if (options.clearBeforeImport) {
+        args.push('--clear-before-import');
+    }
+    if (options.acceptClearRisk) {
+        args.push('--i-accept-clear-data-risk');
     }
     return args;
 }

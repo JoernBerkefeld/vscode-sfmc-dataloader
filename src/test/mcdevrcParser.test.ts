@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { getCredentials, getBusinessUnits, type Mcdevrc } from '../mcdevrcParser';
+import { getCredentials, getBusinessUnits, getAllCredBus, type Mcdevrc } from '../mcdevrcParser';
 
 const SAMPLE_MCDEVRC: Mcdevrc = {
     credentials: {
@@ -52,5 +52,26 @@ describe('getBusinessUnits', () => {
             },
         };
         assert.deepEqual(getBusinessUnits(rc, 'empty'), []);
+    });
+});
+
+describe('getAllCredBus', () => {
+    it('returns all cred/bu pairs across all credentials', () => {
+        assert.deepEqual(getAllCredBus(SAMPLE_MCDEVRC), [
+            'production/ParentBU',
+            'production/ChildBU',
+            'sandbox/DevBU',
+        ]);
+    });
+
+    it('returns empty array when credentials is empty', () => {
+        assert.deepEqual(getAllCredBus({ credentials: {} }), []);
+    });
+
+    it('returns empty array when credentials is undefined', () => {
+        assert.deepEqual(
+            getAllCredBus({ credentials: undefined as unknown as Record<string, never> }),
+            []
+        );
     });
 });

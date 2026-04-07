@@ -65,6 +65,32 @@
                 "command": "sfmc-data.importDECrossBU",
                 "title": "Import DE Data (Cross-BU)",
                 "category": "SFMC Data"
+            },
+            {
+                "command": "sfmc-data.contextExportDE",
+                "title": "Export Data",
+                "category": "SFMC Data"
+            },
+            {
+                "command": "sfmc-data.contextImportDE",
+                "title": "Import Data",
+                "category": "SFMC Data"
+            },
+            {
+                "command": "sfmc-data.contextImportToBU",
+                "title": "Import to BU...",
+                "category": "SFMC Data"
+            },
+            {
+                "command": "sfmc-data.contextExportFromBUs",
+                "title": "Export from BUs...",
+                "category": "SFMC Data"
+            }
+        ],
+        "submenus": [
+            {
+                "id": "sfmc-data.explorerContextMenu",
+                "label": "SFMC Data Loader"
             }
         ],
         "menus": {
@@ -84,6 +110,47 @@
                 {
                     "command": "sfmc-data.importDECrossBU",
                     "when": "workspaceFolderCount > 0"
+                },
+                {
+                    "command": "sfmc-data.contextExportDE",
+                    "when": "false"
+                },
+                {
+                    "command": "sfmc-data.contextImportDE",
+                    "when": "false"
+                },
+                {
+                    "command": "sfmc-data.contextImportToBU",
+                    "when": "false"
+                },
+                {
+                    "command": "sfmc-data.contextExportFromBUs",
+                    "when": "false"
+                }
+            ],
+            "explorer/context": [
+                {
+                    "submenu": "sfmc-data.explorerContextMenu",
+                    "when": "resourceFilename =~ /\\.dataExtension-(meta\\.json|doc\\.md)$/ || resourceFilename =~ /\\+MCDATA\\+/",
+                    "group": "sfmc@1"
+                }
+            ],
+            "sfmc-data.explorerContextMenu": [
+                {
+                    "command": "sfmc-data.contextExportDE",
+                    "group": "1_export@1"
+                },
+                {
+                    "command": "sfmc-data.contextExportFromBUs",
+                    "group": "1_export@2"
+                },
+                {
+                    "command": "sfmc-data.contextImportDE",
+                    "group": "2_import@1"
+                },
+                {
+                    "command": "sfmc-data.contextImportToBU",
+                    "group": "2_import@2"
                 }
             ]
         },
