@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildExportArgs, buildImportArgs } from '../argbuilder';
+import { buildExportArgs, buildImportArgs, buildMultiBuExportArgs, buildCrossBuImportArgs } from '../argbuilder';
 
 describe('buildExportArgs', () => {
     it('produces export subcommand with a single DE key', () => {
@@ -89,6 +89,127 @@ describe('buildImportArgs — by DE key', () => {
 
     it('does not append clear flags when both are false', () => {
         const args = buildImportArgs('a/b', {
+            deKeys: ['K'],
+            format: 'csv',
+            api: 'async',
+            mode: 'upsert',
+            clearBeforeImport: false,
+            acceptClearRisk: false,
+        });
+        assert.ok(!args.includes('--clear-before-import'));
+        assert.ok(!args.includes('--i-accept-clear-data-risk'));
+    });
+});
+
+describe('buildMultiBuExportArgs', () => {
+    it('produces export with multiple --from flags', () => {
+        const args = buildMultiBuExportArgs({
+            fromCredBus: ['org/Dev', 'org/QA'],
+            deKeys: ['DE1'],
+            format: 'csv',
+        });
+        assert.equal(args[0], 'export');
+        assert.ok(!args.includes('org/Dev') || args.indexOf('--from') < args.indexOf('org/Dev'));
+        assert.deepEqual(
+            args.filter((_, i, a) => a[i - 1] === '--from'),
+            ['org/Dev', 'org/QA']
+        );
+        assert.deepEqual(
+            args.filter((_, i, a) => a[i - 1] === '--de'),
+            ['DE1']
+        );
+    });
+
+    it('supports multiple DE keys', () => {
+        const args = buildMultiBuExportArgs({
+            fromCredBus: ['org/Dev'],
+            deKeys: ['K1', 'K2'],
+            format: 'tsv',
+        });
+        assert.deepEqual(
+            args.filter((_, i, a) => a[i - 1] === '--de'),
+            ['K1', 'K2']
+        );
+    });
+
+    it('appends --json-pretty when requested', () => {
+        const args = buildMultiBuExportArgs({
+            fromCredBus: ['org/Dev'],
+            deKeys: ['K'],
+            format: 'json',
+            jsonPretty: true,
+        });
+        assert.ok(args.includes('--json-pretty'));
+    });
+
+    it('does not append --json-pretty when not requested', () => {
+        const args = buildMultiBuExportArgs({
+            fromCredBus: ['org/Dev'],
+            deKeys: ['K'],
+            format: 'csv',
+        });
+        assert.ok(!args.includes('--json-pretty'));
+    });
+});
+
+describe('buildCrossBuImportArgs', () => {
+    it('produces import with --from and multiple --to flags', () => {
+        const args = buildCrossBuImportArgs({
+            fromCredBu: 'org/Dev',
+            toCredBus: ['org/QA', 'org/Prod'],
+            deKeys: ['DE1'],
+            format: 'csv',
+            api: 'async',
+            mode: 'upsert',
+            clearBeforeImport: false,
+            acceptClearRisk: false,
+        });
+        assert.equal(args[0], 'import');
+        assert.equal(args[args.indexOf('--from') + 1], 'org/Dev');
+        assert.deepEqual(
+            args.filter((_, i, a) => a[i - 1] === '--to'),
+            ['org/QA', 'org/Prod']
+        );
+        assert.deepEqual(
+            args.filter((_, i, a) => a[i - 1] === '--de'),
+            ['DE1']
+        );
+    });
+
+    it('includes --clear-before-import when requested', () => {
+        const args = buildCrossBuImportArgs({
+            fromCredBu: 'org/Dev',
+            toCredBus: ['org/QA'],
+            deKeys: ['K'],
+            format: 'csv',
+            api: 'async',
+            mode: 'upsert',
+            clearBeforeImport: true,
+            acceptClearRisk: false,
+        });
+        assert.ok(args.includes('--clear-before-import'));
+        assert.ok(!args.includes('--i-accept-clear-data-risk'));
+    });
+
+    it('includes both clear flags when risk is accepted', () => {
+        const args = buildCrossBuImportArgs({
+            fromCredBu: 'org/Dev',
+            toCredBus: ['org/QA'],
+            deKeys: ['K'],
+            format: 'csv',
+            api: 'async',
+            mode: 'upsert',
+            clearBeforeImport: true,
+            acceptClearRisk: true,
+        });
+        assert.ok(args.includes('--clear-before-import'));
+        assert.ok(args.includes('--i-accept-clear-data-risk'));
+    });
+
+    it('does not include clear flags when both are false', () => {
+        const args = buildCrossBuImportArgs({
+            fromCredBu: 'org/Dev',
+            toCredBus: ['org/QA'],
             deKeys: ['K'],
             format: 'csv',
             api: 'async',

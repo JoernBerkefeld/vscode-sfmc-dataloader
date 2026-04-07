@@ -52,8 +52,18 @@
                 "category": "SFMC Data"
             },
             {
+                "command": "sfmc-data.exportDEMultiBU",
+                "title": "Export DE Data (Multi-BU)",
+                "category": "SFMC Data"
+            },
+            {
                 "command": "sfmc-data.importDE",
                 "title": "Import DE Data",
+                "category": "SFMC Data"
+            },
+            {
+                "command": "sfmc-data.importDECrossBU",
+                "title": "Import DE Data (Cross-BU)",
                 "category": "SFMC Data"
             }
         ],
@@ -64,7 +74,15 @@
                     "when": "workspaceFolderCount > 0"
                 },
                 {
+                    "command": "sfmc-data.exportDEMultiBU",
+                    "when": "workspaceFolderCount > 0"
+                },
+                {
                     "command": "sfmc-data.importDE",
+                    "when": "workspaceFolderCount > 0"
+                },
+                {
+                    "command": "sfmc-data.importDECrossBU",
                     "when": "workspaceFolderCount > 0"
                 }
             ]
