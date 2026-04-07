@@ -1,0 +1,6 @@
+node_modules
+out
+*.vsix
+*.tsbuildinfo
+src/**/*.js
+src/**/*.js.map
