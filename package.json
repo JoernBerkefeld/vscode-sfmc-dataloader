@@ -29,7 +29,7 @@
         "json",
         "exacttarget"
     ],
-    "icon": "resources/images/sfmc-data-256.png",
+    "icon": "resources/images/sfmc-dataloader-256.png",
     "galleryBanner": {
         "color": "#032d60",
         "theme": "dark"
