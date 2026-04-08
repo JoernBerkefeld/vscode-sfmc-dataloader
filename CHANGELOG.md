@@ -3,6 +3,12 @@
 All notable changes to this extension will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.4.0] — 2026-04-08
+
+### Added
+
+- **What's New**: after an update, a notification offers to open release notes in a webview, parsed from this changelog for the current version. Use command **SFMC Data: Show What's New** anytime.
+
 ## [0.3.0] — 2026-04-08
 
 ### Added
