@@ -85,6 +85,11 @@
                 "command": "sfmc-data.contextExportFromBUs",
                 "title": "Export from BUs...",
                 "category": "SFMC Data"
+            },
+            {
+                "command": "sfmc-data.showWhatsNew",
+                "title": "Show What's New",
+                "category": "SFMC Data"
             }
         ],
         "submenus": [
