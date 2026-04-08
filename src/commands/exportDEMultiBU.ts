@@ -1,16 +1,16 @@
 import * as vscode from 'vscode';
 import { findMcdevProjectRoot, readMcdevrc } from '../config';
 import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
-import { getMcdataCommand, spawnMcdataInTerminal } from '../terminal';
+import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
 import { buildMultiBuExportArgs } from '../argbuilder';
 
 export function registerExportMultiBUCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('sfmc-data.exportDEMultiBU', exportDEMultiBU)
+        vscode.commands.registerCommand('sfmc-data.exportDEMultiBU', () => exportDEMultiBU(context))
     );
 }
 
-async function exportDEMultiBU(): Promise<void> {
+async function exportDEMultiBU(context: vscode.ExtensionContext): Promise<void> {
     const projectRoot = findMcdevProjectRoot(vscode.workspace.workspaceFolders);
     if (!projectRoot) {
         void vscode.window.showErrorMessage('No mcdev project found. Open a folder containing .mcdevrc.json.');
@@ -75,7 +75,8 @@ async function exportDEMultiBU(): Promise<void> {
     const format = cfg.get<string>('defaultFormat') ?? 'csv';
 
     const fromCredBus = selectedBUs.map(({ label }) => `${credential}/${label}`);
-    const mcdata = getMcdataCommand();
+    const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
+    if (prefix === undefined) return;
     const args = buildMultiBuExportArgs({ fromCredBus, deKeys, format });
-    spawnMcdataInTerminal(projectRoot, mcdata, args);
+    spawnMcdataInTerminal(projectRoot, prefix, args);
 }

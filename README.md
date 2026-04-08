@@ -5,11 +5,16 @@ A lightweight VS Code extension that surfaces the [`sfmc-dataloader`](https://ww
 ## Requirements
 
 - An mcdev project initialised with [`mcdev`](https://www.npmjs.com/package/mcdev) (`.mcdevrc.json` + `.mcdev-auth.json` in the workspace root)
-- `sfmc-dataloader` installed globally or available as a local binary:
+- [`Node.js`](https://nodejs.org/) on your **integrated terminal** `PATH` (the extension runs `mcdata` or `node …/mcdata.mjs` in that terminal).
+- **Optional:** your own [`sfmc-dataloader`](https://www.npmjs.com/package/sfmc-dataloader) install if you want a specific version. The extension **bundles** a compatible `sfmc-dataloader` and uses it when no other `mcdata` is chosen. Precedence when `sfmcData.mcdataPath` is empty:
+  1. Workspace `node_modules/.bin/mcdata` (project-local install)
+  2. `mcdata` on your `PATH` (e.g. global `npm install -g sfmc-dataloader`)
+  3. Bundled CLI shipped with the extension
 
 ```bash
+# Optional — global override
 npm install -g sfmc-dataloader
-# or inside the project
+# Optional — project-local override
 npm install sfmc-dataloader
 ```
 
@@ -52,7 +57,7 @@ The assembled `mcdata` command runs in a dedicated integrated terminal so you ca
 
 | Setting | Default | Description |
 |---|---|---|
-| `sfmcData.mcdataPath` | `""` | Custom path to the `mcdata` binary. Leave blank to use `mcdata` from `PATH`. |
+| `sfmcData.mcdataPath` | `""` | Optional path to the `mcdata` binary (highest priority). If empty: workspace `node_modules/.bin`, then `mcdata` on `PATH`, then the version bundled with the extension. |
 | `sfmcData.importApi` | `async` | REST API family used for imports (`async` \| `sync`). |
 | `sfmcData.defaultMode` | `upsert` | Default row write mode (`upsert` \| `insert` \| `update`). `insert` and `update` require `--api sync`. |
 | `sfmcData.defaultFormat` | `csv` | Default file format for exports and imports (`csv` \| `tsv` \| `json`). |

@@ -3,6 +3,12 @@
 All notable changes to this extension will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.5.0] — 2026-04-08
+
+### Changed
+
+- The extension bundles [`sfmc-dataloader`](https://www.npmjs.com/package/sfmc-dataloader) in the VSIX. When no override is configured, the `mcdata` command is resolved in order: optional `sfmcData.mcdataPath` → workspace `node_modules/.bin/mcdata` → `mcdata` on the integrated terminal `PATH` → bundled `node …/mcdata.mjs` (Node.js must remain on `PATH` in that terminal).
+
 ## [0.4.0] — 2026-04-08
 
 ### Added

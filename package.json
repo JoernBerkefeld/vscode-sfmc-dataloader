@@ -4,7 +4,7 @@
     "description": "Export and import Marketing Cloud Data Extension rows via the mcdata CLI (sfmc-dataloader).",
     "author": "Jörn Berkefeld",
     "license": "MIT",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "repository": {
         "type": "git",
         "url": "https://github.com/JoernBerkefeld/vscode-sfmc-data.git"
@@ -44,8 +44,8 @@
     "activationEvents": [
         "onStartupFinished"
     ],
-    "peerDependencies": {
-        "sfmc-dataloader": "*"
+    "dependencies": {
+        "sfmc-dataloader": "^1.2.0"
     },
     "contributes": {
         "commands": [
@@ -168,7 +168,7 @@
                 "sfmcData.mcdataPath": {
                     "type": "string",
                     "default": "",
-                    "markdownDescription": "Optional path to the `mcdata` binary. Leave blank to use `mcdata` from `PATH` or `npx sfmc-dataloader`."
+                    "markdownDescription": "Optional path to the `mcdata` binary (highest priority). If empty: use workspace `node_modules/.bin/mcdata` when present, else `mcdata` on `PATH`, else the `sfmc-dataloader` version bundled with this extension (`node …/mcdata.mjs`). Requires `node` on your terminal `PATH` for the bundled CLI."
                 },
                 "sfmcData.importApi": {
                     "type": "string",
@@ -216,8 +216,8 @@
         "esbuild": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap",
         "compile": "npm run esbuild && tsc -p tsconfig.test.json",
         "watch": "npm run esbuild -- --watch",
-        "package": "npx @vscode/vsce package --no-dependencies",
-        "package:test": "npx @vscode/vsce package --no-dependencies --pre-release -o sfmc-data-BETA.vsix",
+        "package": "npx @vscode/vsce package",
+        "package:test": "npx @vscode/vsce package --pre-release -o sfmc-data-BETA.vsix",
         "lint": "eslint src",
         "test": "node --test out/test/**/*.test.js"
     },

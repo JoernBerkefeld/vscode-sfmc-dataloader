@@ -1,16 +1,22 @@
 import * as vscode from 'vscode';
 import { findMcdevProjectRoot } from '../config';
-import { getMcdataCommand, spawnMcdataInTerminal } from '../terminal';
+import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
 import { buildImportArgs } from '../argbuilder';
 import { resolveContextFiles } from './contextUtils';
 
 export function registerContextImportCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('sfmc-data.contextImportDE', contextImportDE)
+        vscode.commands.registerCommand('sfmc-data.contextImportDE', (uri: vscode.Uri, uris: vscode.Uri[]) =>
+            contextImportDE(context, uri, uris)
+        )
     );
 }
 
-async function contextImportDE(uri: vscode.Uri, uris: vscode.Uri[]): Promise<void> {
+async function contextImportDE(
+    context: vscode.ExtensionContext,
+    uri: vscode.Uri,
+    uris: vscode.Uri[]
+): Promise<void> {
     const projectRoot = findMcdevProjectRoot(vscode.workspace.workspaceFolders);
     if (!projectRoot) {
         void vscode.window.showErrorMessage('No mcdev project found. Open a folder containing .mcdevrc.json.');
@@ -26,7 +32,8 @@ async function contextImportDE(uri: vscode.Uri, uris: vscode.Uri[]): Promise<voi
     const api = cfg.get<string>('importApi') ?? 'async';
     const mode = cfg.get<string>('defaultMode') ?? 'upsert';
 
-    const mcdata = getMcdataCommand();
+    const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
+    if (prefix === undefined) return;
 
     if (parsed[0].type === 'data') {
         // Use --file so the exact selected export files are imported
@@ -39,7 +46,7 @@ async function contextImportDE(uri: vscode.Uri, uris: vscode.Uri[]): Promise<voi
             clearBeforeImport: false,
             acceptClearRisk: false,
         });
-        spawnMcdataInTerminal(projectRoot, mcdata, args);
+        spawnMcdataInTerminal(projectRoot, prefix, args);
     } else {
         // retrieve files: use --de so the CLI resolves the latest matching export
         const deKeys = parsed.map((f) => f.deKey);
@@ -51,6 +58,6 @@ async function contextImportDE(uri: vscode.Uri, uris: vscode.Uri[]): Promise<voi
             clearBeforeImport: false,
             acceptClearRisk: false,
         });
-        spawnMcdataInTerminal(projectRoot, mcdata, args);
+        spawnMcdataInTerminal(projectRoot, prefix, args);
     }
 }

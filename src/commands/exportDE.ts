@@ -1,16 +1,16 @@
 import * as vscode from 'vscode';
 import { findMcdevProjectRoot, readMcdevrc } from '../config';
 import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
-import { getMcdataCommand, spawnMcdataInTerminal } from '../terminal';
+import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
 import { buildExportArgs } from '../argbuilder';
 
 export function registerExportCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('sfmc-data.exportDE', exportDE)
+        vscode.commands.registerCommand('sfmc-data.exportDE', () => exportDE(context))
     );
 }
 
-async function exportDE(): Promise<void> {
+async function exportDE(context: vscode.ExtensionContext): Promise<void> {
     const projectRoot = findMcdevProjectRoot(vscode.workspace.workspaceFolders);
     if (!projectRoot) {
         void vscode.window.showErrorMessage('No mcdev project found. Open a folder containing .mcdevrc.json.');
@@ -71,7 +71,8 @@ async function exportDE(): Promise<void> {
     const cfg = vscode.workspace.getConfiguration('sfmcData');
     const format = cfg.get<string>('defaultFormat') ?? 'csv';
 
-    const mcdata = getMcdataCommand();
+    const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
+    if (prefix === undefined) return;
     const args = buildExportArgs(`${credential}/${bu}`, deKeys, format);
-    spawnMcdataInTerminal(projectRoot, mcdata, args);
+    spawnMcdataInTerminal(projectRoot, prefix, args);
 }

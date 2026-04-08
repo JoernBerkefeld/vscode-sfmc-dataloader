@@ -36,9 +36,9 @@ jobs:
 
             - run: npm ci
             - name: Package VSIX
-              run: npx @vscode/vsce package --no-dependencies
+              run: npx @vscode/vsce package
             - name: Publish to VS Code Marketplace
-              run: npx @vscode/vsce publish --no-dependencies --packagePath *.vsix
+              run: npx @vscode/vsce publish --packagePath *.vsix
               env:
                   VSCE_PAT: ${{ secrets.VSCE_PAT }}
             - name: Upload vsix artifact for Open VSX

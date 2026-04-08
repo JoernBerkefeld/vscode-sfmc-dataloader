@@ -1,16 +1,16 @@
 import * as vscode from 'vscode';
 import { findMcdevProjectRoot, readMcdevrc } from '../config';
 import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
-import { getMcdataCommand, spawnMcdataInTerminal } from '../terminal';
+import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
 import { buildImportArgs } from '../argbuilder';
 
 export function registerImportCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('sfmc-data.importDE', importDE)
+        vscode.commands.registerCommand('sfmc-data.importDE', () => importDE(context))
     );
 }
 
-async function importDE(): Promise<void> {
+async function importDE(context: vscode.ExtensionContext): Promise<void> {
     const projectRoot = findMcdevProjectRoot(vscode.workspace.workspaceFolders);
     if (!projectRoot) {
         void vscode.window.showErrorMessage('No mcdev project found. Open a folder containing .mcdevrc.json.');
@@ -72,7 +72,8 @@ async function importDE(): Promise<void> {
     const api = cfg.get<string>('importApi') ?? 'async';
     const mode = cfg.get<string>('defaultMode') ?? 'upsert';
 
-    const mcdata = getMcdataCommand();
+    const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
+    if (prefix === undefined) return;
     const credBu = `${credential}/${bu}`;
 
     if (importMethod.method === 'key') {
@@ -97,7 +98,7 @@ async function importDE(): Promise<void> {
             clearBeforeImport: false,
             acceptClearRisk: false,
         });
-        spawnMcdataInTerminal(projectRoot, mcdata, args);
+        spawnMcdataInTerminal(projectRoot, prefix, args);
     } else {
         const uris = await vscode.window.showOpenDialog({
             title: 'SFMC Data — Select file(s) to import',
@@ -119,6 +120,6 @@ async function importDE(): Promise<void> {
             clearBeforeImport: false,
             acceptClearRisk: false,
         });
-        spawnMcdataInTerminal(projectRoot, mcdata, args);
+        spawnMcdataInTerminal(projectRoot, prefix, args);
     }
 }

@@ -1,16 +1,16 @@
 import * as vscode from 'vscode';
 import { findMcdevProjectRoot, readMcdevrc } from '../config';
 import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
-import { getMcdataCommand, spawnMcdataInTerminal } from '../terminal';
+import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
 import { buildCrossBuImportArgs } from '../argbuilder';
 
 export function registerImportCrossBUCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('sfmc-data.importDECrossBU', importDECrossBU)
+        vscode.commands.registerCommand('sfmc-data.importDECrossBU', () => importDECrossBU(context))
     );
 }
 
-async function importDECrossBU(): Promise<void> {
+async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> {
     const projectRoot = findMcdevProjectRoot(vscode.workspace.workspaceFolders);
     if (!projectRoot) {
         void vscode.window.showErrorMessage('No mcdev project found. Open a folder containing .mcdevrc.json.');
@@ -108,7 +108,8 @@ async function importDECrossBU(): Promise<void> {
     const api = cfg.get<string>('importApi') ?? 'async';
     const mode = cfg.get<string>('defaultMode') ?? 'upsert';
 
-    const mcdata = getMcdataCommand();
+    const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
+    if (prefix === undefined) return;
     const args = buildCrossBuImportArgs({
         fromCredBu: `${srcCredential}/${srcBU}`,
         toCredBus: selectedTargetBUs.map(({ label }) => `${tgtCredential}/${label}`),
@@ -119,5 +120,5 @@ async function importDECrossBU(): Promise<void> {
         clearBeforeImport: false,
         acceptClearRisk: false,
     });
-    spawnMcdataInTerminal(projectRoot, mcdata, args);
+    spawnMcdataInTerminal(projectRoot, prefix, args);
 }

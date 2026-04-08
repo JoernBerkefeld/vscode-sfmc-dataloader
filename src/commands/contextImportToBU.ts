@@ -1,17 +1,23 @@
 import * as vscode from 'vscode';
 import { findMcdevProjectRoot, readMcdevrc } from '../config';
 import { getAllCredBus } from '../mcdevrcParser';
-import { getMcdataCommand, spawnMcdataInTerminal } from '../terminal';
+import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
 import { buildCrossBuImportArgs, buildFileToMultiBuImportArgs } from '../argbuilder';
 import { resolveContextFiles } from './contextUtils';
 
 export function registerContextImportToBUCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('sfmc-data.contextImportToBU', contextImportToBU)
+        vscode.commands.registerCommand('sfmc-data.contextImportToBU', (uri: vscode.Uri, uris: vscode.Uri[]) =>
+            contextImportToBU(context, uri, uris)
+        )
     );
 }
 
-async function contextImportToBU(uri: vscode.Uri, uris: vscode.Uri[]): Promise<void> {
+async function contextImportToBU(
+    context: vscode.ExtensionContext,
+    uri: vscode.Uri,
+    uris: vscode.Uri[]
+): Promise<void> {
     const projectRoot = findMcdevProjectRoot(vscode.workspace.workspaceFolders);
     if (!projectRoot) {
         void vscode.window.showErrorMessage('No mcdev project found. Open a folder containing .mcdevrc.json.');
@@ -50,7 +56,8 @@ async function contextImportToBU(uri: vscode.Uri, uris: vscode.Uri[]): Promise<v
     const api = cfg.get<string>('importApi') ?? 'async';
     const mode = cfg.get<string>('defaultMode') ?? 'upsert';
 
-    const mcdata = getMcdataCommand();
+    const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
+    if (prefix === undefined) return;
 
     if (parsed[0].type === 'data') {
         // File mode: --to + --file (no source BU auth needed)
@@ -64,7 +71,7 @@ async function contextImportToBU(uri: vscode.Uri, uris: vscode.Uri[]): Promise<v
             clearBeforeImport: false,
             acceptClearRisk: false,
         });
-        spawnMcdataInTerminal(projectRoot, mcdata, args);
+        spawnMcdataInTerminal(projectRoot, prefix, args);
     } else {
         // API mode: --from + --to + --de (source BU fetched live)
         const deKeys = parsed.map((f) => f.deKey);
@@ -78,6 +85,6 @@ async function contextImportToBU(uri: vscode.Uri, uris: vscode.Uri[]): Promise<v
             clearBeforeImport: false,
             acceptClearRisk: false,
         });
-        spawnMcdataInTerminal(projectRoot, mcdata, args);
+        spawnMcdataInTerminal(projectRoot, prefix, args);
     }
 }

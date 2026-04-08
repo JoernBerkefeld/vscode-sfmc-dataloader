@@ -1,17 +1,23 @@
 import * as vscode from 'vscode';
 import { findMcdevProjectRoot, readMcdevrc } from '../config';
 import { getAllCredBus } from '../mcdevrcParser';
-import { getMcdataCommand, spawnMcdataInTerminal } from '../terminal';
+import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
 import { buildMultiBuExportArgs } from '../argbuilder';
 import { resolveContextFiles } from './contextUtils';
 
 export function registerContextExportFromBUsCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('sfmc-data.contextExportFromBUs', contextExportFromBUs)
+        vscode.commands.registerCommand('sfmc-data.contextExportFromBUs', (uri: vscode.Uri, uris: vscode.Uri[]) =>
+            contextExportFromBUs(context, uri, uris)
+        )
     );
 }
 
-async function contextExportFromBUs(uri: vscode.Uri, uris: vscode.Uri[]): Promise<void> {
+async function contextExportFromBUs(
+    context: vscode.ExtensionContext,
+    uri: vscode.Uri,
+    uris: vscode.Uri[]
+): Promise<void> {
     const projectRoot = findMcdevProjectRoot(vscode.workspace.workspaceFolders);
     if (!projectRoot) {
         void vscode.window.showErrorMessage('No mcdev project found. Open a folder containing .mcdevrc.json.');
@@ -49,7 +55,8 @@ async function contextExportFromBUs(uri: vscode.Uri, uris: vscode.Uri[]): Promis
     const cfg = vscode.workspace.getConfiguration('sfmcData');
     const format = cfg.get<string>('defaultFormat') ?? 'csv';
 
-    const mcdata = getMcdataCommand();
+    const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
+    if (prefix === undefined) return;
     const args = buildMultiBuExportArgs({ fromCredBus, deKeys, format });
-    spawnMcdataInTerminal(projectRoot, mcdata, args);
+    spawnMcdataInTerminal(projectRoot, prefix, args);
 }
