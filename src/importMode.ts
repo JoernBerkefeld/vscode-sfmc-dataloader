@@ -8,6 +8,7 @@ type ModePick = vscode.QuickPickItem & { mode: 'upsert' | 'insert' };
 /**
  * When `sfmcData.promptImportMode` is true, shows a QuickPick; otherwise uses {@link getImportWriteModeFromSettings}.
  * Returns `undefined` if the user dismisses the QuickPick.
+ * @param cfg
  */
 export async function resolveImportWriteMode(
     cfg: vscode.WorkspaceConfiguration

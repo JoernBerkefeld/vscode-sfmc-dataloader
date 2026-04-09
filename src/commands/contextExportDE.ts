@@ -6,8 +6,9 @@ import { resolveContextFiles } from './contextUtils';
 
 export function registerContextExportCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('sfmc-data.contextExportDE', (uri: vscode.Uri, uris: vscode.Uri[]) =>
-            contextExportDE(context, uri, uris)
+        vscode.commands.registerCommand(
+            'sfmc-data.contextExportDE',
+            (uri: vscode.Uri, uris: vscode.Uri[]) => contextExportDE(context, uri, uris)
         )
     );
 }
@@ -19,7 +20,9 @@ async function contextExportDE(
 ): Promise<void> {
     const projectRoot = findMcdevProjectRoot(vscode.workspace.workspaceFolders);
     if (!projectRoot) {
-        void vscode.window.showErrorMessage('No mcdev project found. Open a folder containing .mcdevrc.json.');
+        void vscode.window.showErrorMessage(
+            'No mcdev project found. Open a folder containing .mcdevrc.json.'
+        );
         return;
     }
 

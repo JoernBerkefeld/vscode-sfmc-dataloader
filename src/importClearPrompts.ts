@@ -30,7 +30,10 @@ export async function promptOptionalClearBeforeImport(): Promise<{
 
     const confirm = await vscode.window.showWarningMessage(
         'This deletes all existing rows in the target Data Extension(s) before the import. This cannot be undone.',
-        { modal: true, detail: 'Only continue if you intend to replace the full contents of the DE.' },
+        {
+            modal: true,
+            detail: 'Only continue if you intend to replace the full contents of the DE.',
+        },
         'Cancel',
         'I understand — continue'
     );

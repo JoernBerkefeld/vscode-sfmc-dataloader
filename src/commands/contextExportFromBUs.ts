@@ -7,8 +7,9 @@ import { resolveContextFiles } from './contextUtils';
 
 export function registerContextExportFromBUsCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('sfmc-data.contextExportFromBUs', (uri: vscode.Uri, uris: vscode.Uri[]) =>
-            contextExportFromBUs(context, uri, uris)
+        vscode.commands.registerCommand(
+            'sfmc-data.contextExportFromBUs',
+            (uri: vscode.Uri, uris: vscode.Uri[]) => contextExportFromBUs(context, uri, uris)
         )
     );
 }
@@ -20,7 +21,9 @@ async function contextExportFromBUs(
 ): Promise<void> {
     const projectRoot = findMcdevProjectRoot(vscode.workspace.workspaceFolders);
     if (!projectRoot) {
-        void vscode.window.showErrorMessage('No mcdev project found. Open a folder containing .mcdevrc.json.');
+        void vscode.window.showErrorMessage(
+            'No mcdev project found. Open a folder containing .mcdevrc.json.'
+        );
         return;
     }
 
@@ -31,8 +34,8 @@ async function contextExportFromBUs(
     let mcdevrc;
     try {
         mcdevrc = readMcdevrc(projectRoot);
-    } catch (e) {
-        void vscode.window.showErrorMessage(`Failed to read .mcdevrc.json: ${String(e)}`);
+    } catch (ex) {
+        void vscode.window.showErrorMessage(`Failed to read .mcdevrc.json: ${String(ex)}`);
         return;
     }
 

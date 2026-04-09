@@ -2,7 +2,11 @@
  * Changelog parsing and minimal markdown HTML (no vscode dependency — safe for Node unit tests).
  */
 
-/** Compare semver strings (numeric segments only). Returns positive if a > b. */
+/**
+ * Compare semver strings (numeric segments only). Returns positive if a > b.
+ * @param a
+ * @param b
+ */
 export function compareSemver(a: string, b: string): number {
     const pa = a.split('.').map((p) => Number.parseInt(p, 10) || 0);
     const pb = b.split('.').map((p) => Number.parseInt(p, 10) || 0);
@@ -18,6 +22,8 @@ export function compareSemver(a: string, b: string): number {
 
 /**
  * Extract the changelog body for a given version (Keep a Changelog style: ## [x.y.z]).
+ * @param changelog
+ * @param version
  */
 export function parseChangelogEntry(changelog: string, version: string): string | null {
     const escaped = version.replaceAll(/[.*+?^${}()|[\]\\]/g, (ch) => `\\${ch}`);
@@ -37,7 +43,10 @@ export function escapeHtml(s: string): string {
     return s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
-/** Bold and inline code on text that is already HTML-escaped. */
+/**
+ * Bold and inline code on text that is already HTML-escaped.
+ * @param escaped
+ */
 function inlineBoldAndCode(escaped: string): string {
     let s = escaped.replaceAll(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     s = s.replaceAll(/`([^`]+)`/g, '<code>$1</code>');
@@ -46,7 +55,10 @@ function inlineBoldAndCode(escaped: string): string {
 
 const MD_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g;
 
-/** Escape a string for use inside a double-quoted HTML attribute value. */
+/**
+ * Escape a string for use inside a double-quoted HTML attribute value.
+ * @param s
+ */
 function escapeHtmlAttributeValue(s: string): string {
     return s.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
 }
@@ -54,6 +66,7 @@ function escapeHtmlAttributeValue(s: string): string {
 /**
  * Renders inline markdown: optional [label](https://...) links (http/https only), **bold**, `code`.
  * Link labels support nested bold/code after the label substring is extracted.
+ * @param raw
  */
 export function renderInlineRaw(raw: string): string {
     let out = '';
@@ -126,7 +139,10 @@ function renderMarkdownChunk(chunk: string): string {
     return out.join('');
 }
 
-/** Minimal markdown → HTML for changelog sections (headings, lists, bold, code). */
+/**
+ * Minimal markdown → HTML for changelog sections (headings, lists, bold, code).
+ * @param md
+ */
 export function markdownToHtml(md: string): string {
     const parts: string[] = [];
     const fence = /^```(\w*)\r?\n([\s\S]*?)^```$/gm;

@@ -1,49 +1,51 @@
-import js from '@eslint/js';
+import eslint from '@eslint/js';
+import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
+import eslintPluginUnicorn from 'eslint-plugin-unicorn';
+import globals from 'globals';
+import jsdoc from 'eslint-plugin-jsdoc';
 import tseslint from 'typescript-eslint';
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default tseslint.config(
-    { ignores: ['out/**', 'node_modules/**'] },
-    js.configs.recommended,
+    {
+        ignores: ['**/node_modules/**', 'out/**', '**/coverage/**', 'scripts/**', '**/*.vsix'],
+    },
+    eslint.configs.recommended,
+    eslintPluginPrettierRecommended,
+    jsdoc.configs['flat/recommended'],
+    eslintPluginUnicorn.configs.recommended,
     ...tseslint.configs.recommended,
     {
-        files: ['src/**/*.ts'],
-        ignores: ['src/test/**'],
         languageOptions: {
-            parserOptions: {
-                projectService: true,
-                tsconfigRootDir: __dirname,
+            globals: {
+                ...globals.nodeBuiltin,
+                Atomics: 'readonly',
+                SharedArrayBuffer: 'readonly',
             },
         },
         rules: {
-            '@typescript-eslint/no-unused-vars': [
-                'error',
-                {
-                    argsIgnorePattern: '^_',
-                    varsIgnorePattern: '^_',
-                },
-            ],
-        },
-    },
-    {
-        files: ['src/test/**/*.ts'],
-        languageOptions: {
-            parserOptions: {
-                project: './tsconfig.test.json',
-                tsconfigRootDir: __dirname,
-            },
-        },
-        rules: {
-            '@typescript-eslint/no-unused-vars': [
-                'error',
-                {
-                    argsIgnorePattern: '^_',
-                    varsIgnorePattern: '^_',
-                },
-            ],
+            'no-console': 'warn',
+            'unicorn/better-regex': 'off',
+            'unicorn/catch-error-name': ['error', { name: 'ex' }],
+            'unicorn/explicit-length-check': 'off',
+            'unicorn/filename-case': 'off',
+            'unicorn/no-array-callback-reference': 'off',
+            'unicorn/no-array-reduce': 'off',
+            'unicorn/no-await-expression-member': 'off',
+            'unicorn/no-empty-file': 'off',
+            'unicorn/no-hex-escape': 'off',
+            'unicorn/no-nested-ternary': 'off',
+            'unicorn/no-null': 'off',
+            'unicorn/no-static-only-class': 'off',
+            'unicorn/no-unused-properties': 'warn',
+            'unicorn/numeric-separators-style': 'off',
+            'unicorn/prefer-array-some': 'off',
+            'unicorn/prefer-module': 'off',
+            'unicorn/prefer-set-has': 'off',
+            'unicorn/prefer-spread': 'off',
+            'unicorn/prefer-string-replace-all': 'error',
+            'unicorn/prevent-abbreviations': 'off',
+            'jsdoc/require-jsdoc': 'off',
+            'jsdoc/require-param-type': 'off',
         },
     }
 );

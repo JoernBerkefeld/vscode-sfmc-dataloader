@@ -9,8 +9,9 @@ import { resolveImportWriteMode } from '../importMode';
 
 export function registerContextImportToBUCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('sfmc-data.contextImportToBU', (uri: vscode.Uri, uris: vscode.Uri[]) =>
-            contextImportToBU(context, uri, uris)
+        vscode.commands.registerCommand(
+            'sfmc-data.contextImportToBU',
+            (uri: vscode.Uri, uris: vscode.Uri[]) => contextImportToBU(context, uri, uris)
         )
     );
 }
@@ -22,7 +23,9 @@ async function contextImportToBU(
 ): Promise<void> {
     const projectRoot = findMcdevProjectRoot(vscode.workspace.workspaceFolders);
     if (!projectRoot) {
-        void vscode.window.showErrorMessage('No mcdev project found. Open a folder containing .mcdevrc.json.');
+        void vscode.window.showErrorMessage(
+            'No mcdev project found. Open a folder containing .mcdevrc.json.'
+        );
         return;
     }
 
@@ -33,8 +36,8 @@ async function contextImportToBU(
     let mcdevrc;
     try {
         mcdevrc = readMcdevrc(projectRoot);
-    } catch (e) {
-        void vscode.window.showErrorMessage(`Failed to read .mcdevrc.json: ${String(e)}`);
+    } catch (ex) {
+        void vscode.window.showErrorMessage(`Failed to read .mcdevrc.json: ${String(ex)}`);
         return;
     }
 

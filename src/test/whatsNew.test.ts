@@ -1,6 +1,11 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { compareSemver, markdownToHtml, parseChangelogEntry, renderInlineRaw } from '../whatsNewCore';
+import {
+    compareSemver,
+    markdownToHtml,
+    parseChangelogEntry,
+    renderInlineRaw,
+} from '../whatsNewCore';
 
 describe('whatsNew', () => {
     it('parseChangelogEntry extracts section for version and stops at next header', () => {
@@ -26,7 +31,9 @@ describe('whatsNew', () => {
     });
 
     it('renderInlineRaw emits safe https link with escaped label', () => {
-        const html = renderInlineRaw('[sfmc-dataloader](https://www.npmjs.com/package/sfmc-dataloader)');
+        const html = renderInlineRaw(
+            '[sfmc-dataloader](https://www.npmjs.com/package/sfmc-dataloader)'
+        );
         assert.ok(html.includes('<a href="https://www.npmjs.com/package/sfmc-dataloader"'));
         assert.ok(html.includes('target="_blank"'));
         assert.ok(html.includes('rel="noopener noreferrer"'));
@@ -35,7 +42,7 @@ describe('whatsNew', () => {
 
     it('markdownToHtml renders changelog-style npm link in list item', () => {
         const html = markdownToHtml(
-            '- Bundles [sfmc-dataloader](https://www.npmjs.com/package/sfmc-dataloader) in the VSIX.\n',
+            '- Bundles [sfmc-dataloader](https://www.npmjs.com/package/sfmc-dataloader) in the VSIX.\n'
         );
         assert.ok(html.includes('<a href="https://www.npmjs.com/package/sfmc-dataloader"'));
     });

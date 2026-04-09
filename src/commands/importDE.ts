@@ -15,15 +15,17 @@ export function registerImportCommand(context: vscode.ExtensionContext): void {
 async function importDE(context: vscode.ExtensionContext): Promise<void> {
     const projectRoot = findMcdevProjectRoot(vscode.workspace.workspaceFolders);
     if (!projectRoot) {
-        void vscode.window.showErrorMessage('No mcdev project found. Open a folder containing .mcdevrc.json.');
+        void vscode.window.showErrorMessage(
+            'No mcdev project found. Open a folder containing .mcdevrc.json.'
+        );
         return;
     }
 
     let mcdevrc;
     try {
         mcdevrc = readMcdevrc(projectRoot);
-    } catch (e) {
-        void vscode.window.showErrorMessage(`Failed to read .mcdevrc.json: ${String(e)}`);
+    } catch (ex) {
+        void vscode.window.showErrorMessage(`Failed to read .mcdevrc.json: ${String(ex)}`);
         return;
     }
 
@@ -44,7 +46,9 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
 
     const businessUnits = getBusinessUnits(mcdevrc, credential);
     if (businessUnits.length === 0) {
-        void vscode.window.showErrorMessage(`No business units found for credential "${credential}".`);
+        void vscode.window.showErrorMessage(
+            `No business units found for credential "${credential}".`
+        );
         return;
     }
 
@@ -59,8 +63,16 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
 
     const importMethod = await vscode.window.showQuickPick(
         [
-            { label: '$(key) By DE key', description: 'Resolve the latest matching file under ./data/', method: 'key' },
-            { label: '$(folder-opened) By file path', description: 'Select one or more data files', method: 'file' },
+            {
+                label: '$(key) By DE key',
+                description: 'Resolve the latest matching file under ./data/',
+                method: 'key',
+            },
+            {
+                label: '$(folder-opened) By file path',
+                description: 'Select one or more data files',
+                method: 'file',
+            },
         ],
         {
             title: 'SFMC Data — Import method',

@@ -2,8 +2,11 @@ import type * as vscode from 'vscode';
 
 /**
  * Reads `sfmcData.importMode` when set at any scope; otherwise falls back to deprecated `sfmcData.defaultMode`.
+ * @param cfg
  */
-export function getImportWriteModeFromSettings(cfg: vscode.WorkspaceConfiguration): 'upsert' | 'insert' {
+export function getImportWriteModeFromSettings(
+    cfg: vscode.WorkspaceConfiguration
+): 'upsert' | 'insert' {
     const inspected = cfg.inspect<string>('importMode');
     const importModeSet =
         inspected?.globalValue !== undefined ||

@@ -1,12 +1,11 @@
 import * as vscode from 'vscode';
 import * as fs from 'node:fs';
-import * as path from 'node:path';
+import path from 'node:path';
 import type { Mcdevrc } from './mcdevrcParser';
 
 /**
  * Walks the open workspace folders and returns the first folder that contains
  * a `.mcdevrc.json` file, or `undefined` when none is found.
- *
  * @param workspaceFolders - VS Code workspace folders
  */
 export function findMcdevProjectRoot(
@@ -24,7 +23,6 @@ export function findMcdevProjectRoot(
 
 /**
  * Reads and parses `.mcdevrc.json` from the given project root.
- *
  * @param projectRoot - absolute path to the mcdev project root
  * @throws if the file is missing or contains invalid JSON
  */

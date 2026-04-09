@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import * as path from 'node:path';
+import path from 'node:path';
 import { parseContextFilePath } from '../filePathParser';
 
 const ROOT = path.join('C:', 'projects', 'mcdev');
@@ -12,7 +12,13 @@ function abs(...parts: string[]): string {
 describe('parseContextFilePath — retrieve files', () => {
     it('parses a dataExtension-meta.json path', () => {
         const result = parseContextFilePath(
-            abs('retrieve', 'MyCred', 'MyBU', 'dataExtension', 'Contact_DE.dataExtension-meta.json'),
+            abs(
+                'retrieve',
+                'MyCred',
+                'MyBU',
+                'dataExtension',
+                'Contact_DE.dataExtension-meta.json'
+            ),
             ROOT
         );
         assert.ok(result);
@@ -25,7 +31,13 @@ describe('parseContextFilePath — retrieve files', () => {
 
     it('parses a dataExtension-doc.md path', () => {
         const result = parseContextFilePath(
-            abs('retrieve', 'MyCred', 'MyBU', 'dataExtension', 'AC_EmailLog_Staging.dataExtension-doc.md'),
+            abs(
+                'retrieve',
+                'MyCred',
+                'MyBU',
+                'dataExtension',
+                'AC_EmailLog_Staging.dataExtension-doc.md'
+            ),
             ROOT
         );
         assert.ok(result);
@@ -44,7 +56,14 @@ describe('parseContextFilePath — retrieve files', () => {
 
     it('returns undefined for a file too deep', () => {
         const result = parseContextFilePath(
-            abs('retrieve', 'MyCred', 'MyBU', 'dataExtension', 'sub', 'Contact_DE.dataExtension-meta.json'),
+            abs(
+                'retrieve',
+                'MyCred',
+                'MyBU',
+                'dataExtension',
+                'sub',
+                'Contact_DE.dataExtension-meta.json'
+            ),
             ROOT
         );
         assert.equal(result, undefined);
@@ -77,10 +96,7 @@ describe('parseContextFilePath — data files', () => {
     });
 
     it('returns undefined for a data file without valid mcdata basename', () => {
-        const result = parseContextFilePath(
-            abs('data', 'MyCred', 'MyBU', 'Contact_DE.csv'),
-            ROOT
-        );
+        const result = parseContextFilePath(abs('data', 'MyCred', 'MyBU', 'Contact_DE.csv'), ROOT);
         assert.equal(result, undefined);
     });
 

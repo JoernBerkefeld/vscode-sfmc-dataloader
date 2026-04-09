@@ -48,12 +48,17 @@ export type CrossBuImportOptions = {
 
 /**
  * Builds the argument list for `mcdata export <credBu> ...`.
- *
  * @param credBu - `<credential>/<businessUnit>` token
  * @param deKeys - one or more DE customer keys
  * @param format - csv | tsv | json
+ * @param useGit
  */
-export function buildExportArgs(credBu: string, deKeys: string[], format: string, useGit?: boolean): string[] {
+export function buildExportArgs(
+    credBu: string,
+    deKeys: string[],
+    format: string,
+    useGit?: boolean
+): string[] {
     const args: string[] = ['export', credBu, '--format', format];
     if (useGit) {
         args.push('--git');
@@ -66,7 +71,6 @@ export function buildExportArgs(credBu: string, deKeys: string[], format: string
 
 /**
  * Builds the argument list for `mcdata export --from ... --from ... --de ...`.
- *
  * @param options - multi-BU export settings
  */
 export function buildMultiBuExportArgs(options: MultiBuExportOptions): string[] {
@@ -91,7 +95,6 @@ export function buildMultiBuExportArgs(options: MultiBuExportOptions): string[] 
  *
  * Used when the source data is already on disk (data/ export files).
  * No `--from` is emitted — the DE key is derived from each filename by the CLI.
- *
  * @param options - file-to-multi-BU import settings
  */
 export function buildFileToMultiBuImportArgs(options: FileToMultiBuImportOptions): string[] {
@@ -116,11 +119,18 @@ export function buildFileToMultiBuImportArgs(options: FileToMultiBuImportOptions
 
 /**
  * Builds the argument list for `mcdata import --from <src> --to <tgt> [--to <tgt>] ...`.
- *
  * @param options - cross-BU import settings
  */
 export function buildCrossBuImportArgs(options: CrossBuImportOptions): string[] {
-    const args: string[] = ['import', '--from', options.fromCredBu, '--format', options.format, '--mode', options.mode];
+    const args: string[] = [
+        'import',
+        '--from',
+        options.fromCredBu,
+        '--format',
+        options.format,
+        '--mode',
+        options.mode,
+    ];
     if (options.useGit) {
         args.push('--git');
     }
@@ -144,11 +154,15 @@ export function buildCrossBuImportArgs(options: CrossBuImportOptions): string[] 
  *
  * Exactly one of `deKeys` or `filePaths` must be supplied (mirrors CLI mutual
  * exclusion between `--de` and `--file`).
- *
  * @param credBu - `<credential>/<businessUnit>` token
  * @param options - import settings derived from VS Code settings and user input
+ * @param useGit
  */
-export function buildImportArgs(credBu: string, options: ImportOptions, useGit?: boolean): string[] {
+export function buildImportArgs(
+    credBu: string,
+    options: ImportOptions,
+    useGit?: boolean
+): string[] {
     const args: string[] = ['import', credBu, '--format', options.format, '--mode', options.mode];
     if (useGit) {
         args.push('--git');

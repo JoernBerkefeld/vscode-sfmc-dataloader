@@ -8,8 +8,9 @@ import { resolveImportWriteMode } from '../importMode';
 
 export function registerContextImportCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('sfmc-data.contextImportDE', (uri: vscode.Uri, uris: vscode.Uri[]) =>
-            contextImportDE(context, uri, uris)
+        vscode.commands.registerCommand(
+            'sfmc-data.contextImportDE',
+            (uri: vscode.Uri, uris: vscode.Uri[]) => contextImportDE(context, uri, uris)
         )
     );
 }
@@ -21,7 +22,9 @@ async function contextImportDE(
 ): Promise<void> {
     const projectRoot = findMcdevProjectRoot(vscode.workspace.workspaceFolders);
     if (!projectRoot) {
-        void vscode.window.showErrorMessage('No mcdev project found. Open a folder containing .mcdevrc.json.');
+        void vscode.window.showErrorMessage(
+            'No mcdev project found. Open a folder containing .mcdevrc.json.'
+        );
         return;
     }
 

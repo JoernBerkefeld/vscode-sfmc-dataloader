@@ -13,7 +13,6 @@ export type Mcdevrc = {
 
 /**
  * Returns all credential names from a parsed .mcdevrc.json object.
- *
  * @param mcdevrc - parsed .mcdevrc.json
  */
 export function getCredentials(mcdevrc: Mcdevrc): string[] {
@@ -23,7 +22,6 @@ export function getCredentials(mcdevrc: Mcdevrc): string[] {
 /**
  * Returns all business unit names for a given credential from a parsed
  * .mcdevrc.json object.
- *
  * @param mcdevrc - parsed .mcdevrc.json
  * @param credential - credential name
  */
@@ -34,7 +32,6 @@ export function getBusinessUnits(mcdevrc: Mcdevrc, credential: string): string[]
 /**
  * Returns all `"<credential>/<businessUnit>"` pairs from a parsed
  * .mcdevrc.json object, across every credential.
- *
  * @param mcdevrc - parsed .mcdevrc.json
  */
 export function getAllCredBus(mcdevrc: Mcdevrc): string[] {

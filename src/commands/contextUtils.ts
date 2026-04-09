@@ -17,7 +17,6 @@ export type ResolvedContextFiles = {
  * Returns `undefined` (after showing an error message) when:
  * - no recognisable files are found
  * - selected files span more than one credential/BU
- *
  * @param uri   The right-clicked file URI (may be undefined if called from palette).
  * @param uris  All selected file URIs (populated by VS Code on multi-select).
  * @param projectRoot Absolute path to the mcdev project root.
@@ -49,7 +48,7 @@ export function resolveContextFiles(
     if (parsed.some((f) => f.credBu !== credBu)) {
         void vscode.window.showErrorMessage(
             'SFMC Data Loader: all selected files must belong to the same credential/BU. ' +
-            'Please select files from a single BU folder.'
+                'Please select files from a single BU folder.'
         );
         return undefined;
     }

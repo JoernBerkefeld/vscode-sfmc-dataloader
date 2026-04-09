@@ -22,9 +22,14 @@ describe('buildExportArgs', () => {
     it('produces repeated --de flags for multiple keys', () => {
         const args = buildExportArgs('myOrg/myBU', ['Key_A', 'Key_B'], 'tsv');
         assert.deepEqual(args, [
-            'export', 'myOrg/myBU', '--format', 'tsv',
-            '--de', 'Key_A',
-            '--de', 'Key_B',
+            'export',
+            'myOrg/myBU',
+            '--format',
+            'tsv',
+            '--de',
+            'Key_A',
+            '--de',
+            'Key_B',
         ]);
     });
 
@@ -49,8 +54,14 @@ describe('buildImportArgs — by DE key', () => {
             acceptClearRisk: false,
         });
         assert.deepEqual(args, [
-            'import', 'myOrg/myBU', '--format', 'csv', '--mode', 'upsert',
-            '--de', 'DE_Key_1',
+            'import',
+            'myOrg/myBU',
+            '--format',
+            'csv',
+            '--mode',
+            'upsert',
+            '--de',
+            'DE_Key_1',
         ]);
     });
 

@@ -17,7 +17,7 @@ function mockWorkspaceConfiguration(options: {
             if (section === 'importMode') {
                 return options.importInspect ?? {};
             }
-            return undefined;
+            return;
         },
         get: (section: string) => {
             if (section === 'importMode') {
@@ -26,7 +26,7 @@ function mockWorkspaceConfiguration(options: {
             if (section === 'defaultMode') {
                 return options.getDefaultMode ?? 'upsert';
             }
-            return undefined;
+            return;
         },
     } as vscode.WorkspaceConfiguration;
 }

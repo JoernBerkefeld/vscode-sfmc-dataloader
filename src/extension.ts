@@ -14,8 +14,8 @@ const EXTENSION_DISPLAY_NAME = 'SFMC Data Loader';
 export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.commands.registerCommand('sfmc-data.showWhatsNew', () =>
-            showWhatsNewPanel(context, EXTENSION_DISPLAY_NAME),
-        ),
+            showWhatsNewPanel(context, EXTENSION_DISPLAY_NAME)
+        )
     );
     void checkAndShowWhatsNew(context, EXTENSION_DISPLAY_NAME);
 

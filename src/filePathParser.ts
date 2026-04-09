@@ -4,7 +4,7 @@
  * key from the path structure and filename.
  */
 
-import * as path from 'node:path';
+import path from 'node:path';
 import { parseExportBasename } from 'sfmc-dataloader';
 
 export type ParsedContextFile = {
@@ -29,7 +29,6 @@ export type ParsedContextFile = {
  * - `retrieve/<cred>/<bu>/dataExtension/<key>.dataExtension-meta.json`
  * - `retrieve/<cred>/<bu>/dataExtension/<key>.dataExtension-doc.md`
  * - `data/<cred>/<bu>/<basename>` where basename matches `sfmc-dataloader` export naming (`.mcdata.`)
- *
  * @param filePath   Absolute path of the selected file.
  * @param projectRoot Absolute path of the mcdev project root.
  */
@@ -41,11 +40,7 @@ export function parseContextFilePath(
     const parts = rel.split(path.sep);
 
     // retrieve/<cred>/<bu>/dataExtension/<filename>
-    if (
-        parts.length === 5 &&
-        parts[0] === 'retrieve' &&
-        parts[3] === 'dataExtension'
-    ) {
+    if (parts.length === 5 && parts[0] === 'retrieve' && parts[3] === 'dataExtension') {
         const deKey = parts[4].split('.')[0];
         if (!deKey) return undefined;
         return {

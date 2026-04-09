@@ -1,9 +1,9 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { execSync as nodeExecSync } from 'child_process';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import { execSync as nodeExecSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import path from 'node:path';
 import {
     quoteShellToken,
     bundledMcdataScriptPath,
@@ -14,7 +14,7 @@ import {
 
 describe('normalizeMcdataSource', () => {
     it('returns bundled for unknown values', () => {
-        assert.equal(normalizeMcdataSource(undefined), 'bundled');
+        assert.equal(normalizeMcdataSource(), 'bundled');
         assert.equal(normalizeMcdataSource(''), 'bundled');
         assert.equal(normalizeMcdataSource('invalid'), 'bundled');
     });
@@ -32,7 +32,10 @@ describe('quoteShellToken', () => {
     });
 
     it('wraps tokens with spaces in double quotes', () => {
-        assert.equal(quoteShellToken('C:\\Program Files\\mcdata.cmd'), '"C:\\Program Files\\mcdata.cmd"');
+        assert.equal(
+            quoteShellToken(String.raw`C:\Program Files\mcdata.cmd`),
+            String.raw`"C:\Program Files\mcdata.cmd"`
+        );
     });
 });
 
@@ -65,13 +68,13 @@ describe('buildMcdataShellPrefix', () => {
     it('custom source uses trimmed path', () => {
         const r = buildMcdataShellPrefix({
             mcdataSource: 'custom',
-            customPath: 'C:\\Tools\\mcdata.cmd',
+            customPath: String.raw`C:\Tools\mcdata.cmd`,
             projectRoot: '/proj',
             extensionPath: '/ext',
         });
         assert.ok('prefix' in r);
         if ('prefix' in r) {
-            assert.equal(r.prefix, 'C:\\Tools\\mcdata.cmd');
+            assert.equal(r.prefix, String.raw`C:\Tools\mcdata.cmd`);
         }
     });
 
@@ -97,7 +100,7 @@ describe('buildMcdataShellPrefix', () => {
             const r = buildMcdataShellPrefix(
                 {
                     mcdataSource: 'bundled',
-                    customPath: 'C:\\Should\\Not\\Matter\\mcdata.cmd',
+                    customPath: String.raw`C:\Should\Not\Matter\mcdata.cmd`,
                     projectRoot: '/nonexistent-workspace',
                     extensionPath: ext,
                 },
@@ -127,7 +130,7 @@ describe('buildMcdataShellPrefix', () => {
             const r = buildMcdataShellPrefix(
                 {
                     mcdataSource: 'auto',
-                    customPath: 'C:\\Ignored\\mcdata.cmd',
+                    customPath: String.raw`C:\Ignored\mcdata.cmd`,
                     projectRoot: tmp,
                     extensionPath: '/ext',
                 },
@@ -159,10 +162,10 @@ describe('buildMcdataShellPrefix', () => {
             {
                 platform: 'linux',
                 existsSync: () => false,
-                execSync: ((() => {
+                execSync: (() => {
                     probed = true;
                     return '';
-                }) as unknown as typeof nodeExecSync),
+                }) as unknown as typeof nodeExecSync,
             }
         );
         assert.ok(probed);

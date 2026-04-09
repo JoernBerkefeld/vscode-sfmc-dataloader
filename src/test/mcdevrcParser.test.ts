@@ -24,7 +24,10 @@ describe('getCredentials', () => {
     });
 
     it('returns empty array when credentials is undefined', () => {
-        assert.deepEqual(getCredentials({ credentials: undefined as unknown as Record<string, never> }), []);
+        assert.deepEqual(
+            getCredentials({ credentials: undefined as unknown as Record<string, never> }),
+            []
+        );
     });
 
     it('returns empty array for an object with no credentials', () => {

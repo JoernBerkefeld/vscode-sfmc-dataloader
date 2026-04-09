@@ -1,6 +1,6 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { execSync } from 'child_process';
+import * as fs from 'node:fs';
+import path from 'node:path';
+import { execSync } from 'node:child_process';
 
 /** Optional overrides for unit tests. */
 export type McdataResolveDeps = {
@@ -13,15 +13,19 @@ const plat = (deps?: McdataResolveDeps) => deps?.platform ?? process.platform;
 
 /**
  * Quote a single shell token if it contains whitespace or quotes.
+ * @param token
  */
 export function quoteShellToken(token: string): string {
     if (!/[ \t"]/.test(token)) {
         return token;
     }
-    return `"${token.replace(/"/g, '\\"')}"`;
+    return `"${token.replaceAll('"', String.raw`\"`)}"`;
 }
 
-export function getWorkspaceBinMcdata(projectRoot: string, deps?: McdataResolveDeps): string | undefined {
+export function getWorkspaceBinMcdata(
+    projectRoot: string,
+    deps?: McdataResolveDeps
+): string | undefined {
     const exists = deps?.existsSync ?? fs.existsSync;
     const binDir = path.join(projectRoot, 'node_modules', '.bin');
     if (plat(deps) === 'win32') {
@@ -67,15 +71,19 @@ const VALID_MCDATA_SOURCES: readonly McdataSource[] = ['bundled', 'auto', 'custo
 
 /**
  * Normalizes a configuration value to {@link McdataSource}. Unknown values default to `bundled`.
+ * @param raw
  */
-export function normalizeMcdataSource(raw: string | undefined): McdataSource {
+export function normalizeMcdataSource(raw?: string): McdataSource {
     if (raw && (VALID_MCDATA_SOURCES as readonly string[]).includes(raw)) {
         return raw as McdataSource;
     }
     return 'bundled';
 }
 
-function bundledPrefixOrError(extensionPath: string, deps?: McdataResolveDeps): { prefix: string } | { error: string } {
+function bundledPrefixOrError(
+    extensionPath: string,
+    deps?: McdataResolveDeps
+): { prefix: string } | { error: string } {
     const exists = deps?.existsSync ?? fs.existsSync;
     const bundled = bundledMcdataScriptPath(extensionPath);
     if (!exists(bundled)) {
@@ -91,6 +99,12 @@ function bundledPrefixOrError(extensionPath: string, deps?: McdataResolveDeps): 
  * - **bundled** — only the minified CLI under the extension (`node …/out/mcdata.bundled.cjs`).
  * - **auto** — workspace `node_modules/.bin/mcdata` → `mcdata` on `PATH` → bundled script.
  * - **custom** — `customPath` after trim (quoted); empty path is an error.
+ * @param options
+ * @param options.mcdataSource
+ * @param options.customPath
+ * @param options.projectRoot
+ * @param options.extensionPath
+ * @param deps
  */
 export function buildMcdataShellPrefix(
     options: {

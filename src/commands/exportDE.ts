@@ -13,15 +13,17 @@ export function registerExportCommand(context: vscode.ExtensionContext): void {
 async function exportDE(context: vscode.ExtensionContext): Promise<void> {
     const projectRoot = findMcdevProjectRoot(vscode.workspace.workspaceFolders);
     if (!projectRoot) {
-        void vscode.window.showErrorMessage('No mcdev project found. Open a folder containing .mcdevrc.json.');
+        void vscode.window.showErrorMessage(
+            'No mcdev project found. Open a folder containing .mcdevrc.json.'
+        );
         return;
     }
 
     let mcdevrc;
     try {
         mcdevrc = readMcdevrc(projectRoot);
-    } catch (e) {
-        void vscode.window.showErrorMessage(`Failed to read .mcdevrc.json: ${String(e)}`);
+    } catch (ex) {
+        void vscode.window.showErrorMessage(`Failed to read .mcdevrc.json: ${String(ex)}`);
         return;
     }
 
@@ -42,7 +44,9 @@ async function exportDE(context: vscode.ExtensionContext): Promise<void> {
 
     const businessUnits = getBusinessUnits(mcdevrc, credential);
     if (businessUnits.length === 0) {
-        void vscode.window.showErrorMessage(`No business units found for credential "${credential}".`);
+        void vscode.window.showErrorMessage(
+            `No business units found for credential "${credential}".`
+        );
         return;
     }
 
