@@ -4,16 +4,12 @@ import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
 import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
 import { buildImportArgs } from '../argbuilder';
 import { promptOptionalClearBeforeImport } from '../importClearPrompts';
+import { resolveImportWriteMode } from '../importMode';
 
 export function registerImportCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.commands.registerCommand('sfmc-data.importDE', () => importDE(context))
     );
-}
-
-function resolveImportMode(cfg: vscode.WorkspaceConfiguration): 'upsert' | 'insert' {
-    const raw = cfg.get<string>('defaultMode') ?? 'upsert';
-    return raw === 'insert' ? 'insert' : 'upsert';
 }
 
 async function importDE(context: vscode.ExtensionContext): Promise<void> {
@@ -75,14 +71,10 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
 
     const cfg = vscode.workspace.getConfiguration('sfmcData');
     const format = cfg.get<string>('defaultFormat') ?? 'csv';
-    const mode = resolveImportMode(cfg);
     const useGit = cfg.get<boolean>('useGitFilenames') === true;
 
-    const clearChoice = await promptOptionalClearBeforeImport();
-
-    const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
-    if (prefix === undefined) return;
-    const credBu = `${credential}/${bu}`;
+    let deKeys: string[] | undefined;
+    let filePaths: string[] | undefined;
 
     if (importMethod.method === 'key') {
         const deInput = await vscode.window.showInputBox({
@@ -93,11 +85,34 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
         });
         if (!deInput?.trim()) return;
 
-        const deKeys = deInput
+        deKeys = deInput
             .split(',')
             .map((k) => k.trim())
             .filter(Boolean);
+    } else {
+        const uris = await vscode.window.showOpenDialog({
+            title: 'SFMC Data — Select file(s) to import',
+            canSelectMany: true,
+            filters: {
+                'Data files': ['csv', 'tsv', 'json'],
+                'All files': ['*'],
+            },
+        });
+        if (!uris || uris.length === 0) return;
 
+        filePaths = uris.map((u) => u.fsPath);
+    }
+
+    const mode = await resolveImportWriteMode(cfg);
+    if (mode === undefined) return;
+
+    const clearChoice = await promptOptionalClearBeforeImport();
+
+    const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
+    if (prefix === undefined) return;
+    const credBu = `${credential}/${bu}`;
+
+    if (deKeys) {
         const args = buildImportArgs(
             credBu,
             {
@@ -110,19 +125,7 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
             useGit
         );
         spawnMcdataInTerminal(projectRoot, prefix, args);
-    } else {
-        const uris = await vscode.window.showOpenDialog({
-            title: 'SFMC Data — Select file(s) to import',
-            canSelectMany: true,
-            filters: {
-                'Data files': ['csv', 'tsv', 'json'],
-                'All files': ['*'],
-            },
-        });
-        if (!uris || uris.length === 0) return;
-
-        const filePaths = uris.map((u) => u.fsPath);
-
+    } else if (filePaths) {
         const args = buildImportArgs(
             credBu,
             {

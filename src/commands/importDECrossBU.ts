@@ -4,16 +4,12 @@ import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
 import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
 import { buildCrossBuImportArgs } from '../argbuilder';
 import { promptOptionalClearBeforeImport } from '../importClearPrompts';
+import { resolveImportWriteMode } from '../importMode';
 
 export function registerImportCrossBUCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.commands.registerCommand('sfmc-data.importDECrossBU', () => importDECrossBU(context))
     );
-}
-
-function resolveImportMode(cfg: vscode.WorkspaceConfiguration): 'upsert' | 'insert' {
-    const raw = cfg.get<string>('defaultMode') ?? 'upsert';
-    return raw === 'insert' ? 'insert' : 'upsert';
 }
 
 async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> {
@@ -101,8 +97,10 @@ async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> 
 
     const cfg = vscode.workspace.getConfiguration('sfmcData');
     const format = cfg.get<string>('defaultFormat') ?? 'csv';
-    const mode = resolveImportMode(cfg);
     const useGit = cfg.get<boolean>('useGitFilenames') === true;
+
+    const mode = await resolveImportWriteMode(cfg);
+    if (mode === undefined) return;
 
     const clearChoice = await promptOptionalClearBeforeImport();
 

@@ -3,10 +3,18 @@
 All notable changes to this extension will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [0.6.2] — 2026-04-09
+## [0.7.0] — 2026-04-09
+
+### Added
+
+- Settings **`sfmcData.mcdataSource`** (`bundled` | `auto` | `custom`) and clearer **`sfmcData.mcdataPath`** (used only when source is `custom`).
+- **`sfmcData.promptImportMode`** — optional QuickPick for upsert vs insert after import inputs, before the optional clear-before-import prompt.
+- **`sfmcData.importMode`** — default row write mode when not prompting (replaces `sfmcData.defaultMode`).
 
 ### Changed
 
+- **mcdata resolution:** default is **`bundled`** only (minified `out/mcdata.bundled.cjs`). Use **`sfmcData.mcdataSource`: `auto`** for the previous discovery order (workspace `node_modules/.bin/mcdata` → `PATH` → bundled) without a custom path. A non-empty **`sfmcData.mcdataPath` alone no longer selects that binary** — set **`mcdataSource` to `custom`**.
+- **`sfmcData.defaultMode`** is deprecated in favor of **`sfmcData.importMode`**; the old key is still read when `importMode` is unset at every configuration scope.
 - Packaged VSIX includes a minified `out/mcdata.bundled.cjs` CLI fallback instead of shipping full `node_modules` (smaller extension download). `sfmc-dataloader` is a devDependency used only at build time to produce that bundle.
 
 ### Fixed

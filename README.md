@@ -6,10 +6,10 @@ A lightweight VS Code extension that surfaces the [`sfmc-dataloader`](https://ww
 
 - An mcdev project initialised with [`mcdev`](https://www.npmjs.com/package/mcdev) (`.mcdevrc.json` + `.mcdev-auth.json` in the workspace root)
 - [`Node.js`](https://nodejs.org/) on your **integrated terminal** `PATH` (the extension runs `mcdata` or `node …/out/mcdata.bundled.cjs` for the built-in fallback).
-- **Optional:** your own [`sfmc-dataloader`](https://www.npmjs.com/package/sfmc-dataloader) install if you want a specific version. The extension **bundles** a compatible `sfmc-dataloader` and uses it when no other `mcdata` is chosen. Precedence when `sfmcData.mcdataPath` is empty:
-  1. Workspace `node_modules/.bin/mcdata` (project-local install)
-  2. `mcdata` on your `PATH` (e.g. global `npm install -g sfmc-dataloader`)
-  3. Bundled CLI shipped with the extension
+- **Optional:** your own [`sfmc-dataloader`](https://www.npmjs.com/package/sfmc-dataloader) install if you want a specific version. The extension **bundles** a compatible `sfmc-dataloader`. Use **`sfmcData.mcdataSource`** to choose how the integrated terminal resolves `mcdata`:
+  - **`bundled`** (default) — only the minified CLI shipped with the extension (`node …/out/mcdata.bundled.cjs`).
+  - **`auto`** — workspace `node_modules/.bin/mcdata` when present, then `mcdata` on the integrated terminal `PATH`, then the bundled CLI (same discovery order as older releases when no custom path was set).
+  - **`custom`** — run the executable at **`sfmcData.mcdataPath`** (path is ignored for `bundled` and `auto`).
 
 ```bash
 # Optional — global override
@@ -29,7 +29,7 @@ npm install sfmc-dataloader
 | `SFMC Data: Import DE Data` | Import rows from a file or by DE key |
 | `SFMC Data: Import DE Data (Cross-BU)` | Import rows from one BU into multiple target BUs via the SFMC API |
 
-Both commands open a guided QuickPick workflow:
+These commands open a guided QuickPick workflow:
 
 1. **Select credential** (skipped when only one exists)
 2. **Select Business Unit** (skipped when only one exists)
@@ -40,7 +40,7 @@ Both commands open a guided QuickPick workflow:
 Right-click any of the following files in the VS Code Explorer to access the **SFMC Data Loader** submenu:
 
 - `*.dataExtension-meta.json` or `*.dataExtension-doc.md` under `retrieve/<cred>/<bu>/dataExtension/`
-- `*+MCDATA+*` export files under `data/<cred>/<bu>/`
+- Export files under `data/<cred>/<bu>/` whose names contain `.mcdata.` (matches `mcdata` export naming)
 
 You can **multi-select** files within the same BU and all commands will operate on them together.
 
@@ -55,12 +55,18 @@ The assembled `mcdata` command runs in a dedicated integrated terminal so you ca
 
 ## Settings
 
+All settings are under the **SFMC Data Loader** section in VS Code Settings.
+
 | Setting | Default | Description |
 |---|---|---|
-| `sfmcData.mcdataPath` | `""` | Optional path to the `mcdata` binary (highest priority). If empty: workspace `node_modules/.bin`, then `mcdata` on `PATH`, then the version bundled with the extension. |
-| `sfmcData.importApi` | `async` | REST API family used for imports (`async` \| `sync`). |
-| `sfmcData.defaultMode` | `upsert` | Default row write mode (`upsert` \| `insert` \| `update`). `insert` and `update` require `--api sync`. |
-| `sfmcData.defaultFormat` | `csv` | Default file format for exports and imports (`csv` \| `tsv` \| `json`). |
+| `sfmcData.mcdataSource` | `bundled` | How to resolve `mcdata`: `bundled` (extension CLI only), `auto` (workspace `.bin` → `PATH` → bundled), or `custom` (use `sfmcData.mcdataPath`). |
+| `sfmcData.mcdataPath` | `""` | Path to the `mcdata` executable — **only when `mcdataSource` is `custom`**. Ignored for `bundled` and `auto` (you may clear a stale path). |
+| `sfmcData.useGitFilenames` | `false` | When `true`, appends `--git` to every `mcdata` invocation so exports use stable `*.mcdata.<ext>` names without a timestamp. |
+| `sfmcData.promptClearBeforeImport` | `false` | When `true`, after you finish the import QuickPick flow, prompts whether to clear the target Data Extension before import (two-step confirmation; maps to `mcdata` clear-before-import flags). |
+| `sfmcData.promptImportMode` | `false` | When `true`, prompts for upsert vs insert after you choose import inputs and before the optional clear-before-import step. |
+| `sfmcData.importMode` | `upsert` | Default row write mode for imports when not prompting: `upsert` or `insert`. Replaces deprecated `sfmcData.defaultMode`. |
+| `sfmcData.defaultMode` | — | **Deprecated** — use `sfmcData.importMode`. Still read when `importMode` is unset at every scope. |
+| `sfmcData.defaultFormat` | `csv` | Default file format for exports and imports: `csv`, `tsv`, or `json`. |
 
 ## How it works
 

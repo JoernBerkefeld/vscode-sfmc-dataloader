@@ -4,7 +4,7 @@
     "description": "Export and import Marketing Cloud Data Extension rows via the mcdata CLI (sfmc-dataloader).",
     "author": "Jörn Berkefeld",
     "license": "MIT",
-    "version": "0.6.2",
+    "version": "0.7.0",
     "repository": {
         "type": "git",
         "url": "https://github.com/JoernBerkefeld/vscode-sfmc-data.git"
@@ -173,10 +173,30 @@
         "configuration": {
             "title": "SFMC Data Loader",
             "properties": {
+                "sfmcData.mcdataSource": {
+                    "type": "string",
+                    "enum": [
+                        "bundled",
+                        "auto",
+                        "custom"
+                    ],
+                    "enumDescriptions": [
+                        "Use only the minified CLI shipped with this extension (`node …/out/mcdata.bundled.cjs`). Does not probe workspace `.bin` or `PATH`.",
+                        "Resolve like before: workspace `node_modules/.bin/mcdata` when present, then `mcdata` on the integrated terminal `PATH`, then the bundled CLI.",
+                        "Use the executable path from `sfmcData.mcdataPath` (must be non-empty)."
+                    ],
+                    "enumItemLabels": [
+                        "Bundled only",
+                        "Auto (workspace → PATH → bundled)",
+                        "Custom path"
+                    ],
+                    "default": "bundled",
+                    "description": "How to resolve the `mcdata` CLI for commands run in the integrated terminal."
+                },
                 "sfmcData.mcdataPath": {
                     "type": "string",
                     "default": "",
-                    "markdownDescription": "Optional path to the `mcdata` binary (highest priority). If empty: use workspace `node_modules/.bin/mcdata` when present, else `mcdata` on `PATH`, else the minified CLI bundled with this extension (`node …/out/mcdata.bundled.cjs`). Requires `node` on your terminal `PATH` for the bundled CLI."
+                    "markdownDescription": "Path to the `mcdata` executable. **Only used when `sfmcData.mcdataSource` is `custom`.** Ignored for `bundled` and `auto` (you can clear stale values)."
                 },
                 "sfmcData.useGitFilenames": {
                     "type": "boolean",
@@ -187,6 +207,24 @@
                     "type": "boolean",
                     "default": false,
                     "description": "After choosing import options, prompt whether to clear target DE rows before import (two-step confirmation)."
+                },
+                "sfmcData.promptImportMode": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When true, prompt for upsert vs insert before the optional clear-before-import step; when false, use import mode from settings only."
+                },
+                "sfmcData.importMode": {
+                    "type": "string",
+                    "enum": [
+                        "upsert",
+                        "insert"
+                    ],
+                    "enumDescriptions": [
+                        "Update if primary key exists, else insert (async bulk API)",
+                        "Insert new rows only (async bulk API)"
+                    ],
+                    "default": "upsert",
+                    "description": "Default row write mode for imports when not prompting (async REST bulk endpoints only)."
                 },
                 "sfmcData.defaultMode": {
                     "type": "string",
@@ -199,7 +237,9 @@
                         "Insert new rows only (async bulk API)"
                     ],
                     "default": "upsert",
-                    "description": "Default row write mode for imports (async REST bulk endpoints only)."
+                    "description": "Deprecated: use sfmcData.importMode. Kept for backward compatibility.",
+                    "markdownDeprecationMessage": "Replaced by `#sfmcData.importMode#`. This setting is read only when `importMode` is unset at every scope.",
+                    "deprecationMessage": "Replaced by sfmcData.importMode."
                 },
                 "sfmcData.defaultFormat": {
                     "type": "string",

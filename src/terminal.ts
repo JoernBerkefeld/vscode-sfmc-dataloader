@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
-import { buildMcdataShellPrefix } from './mcdataResolve';
+import { buildMcdataShellPrefix, normalizeMcdataSource } from './mcdataResolve';
 
 /**
- * Resolves the shell command prefix for `mcdata` (custom path, workspace .bin, PATH, or bundled).
- * Shows an error message if the bundled copy is missing when needed.
+ * Resolves the shell command prefix for `mcdata` per `sfmcData.mcdataSource` and `sfmcData.mcdataPath`.
+ * Shows an error message if resolution fails (e.g. missing bundled script, empty custom path).
  *
  * @returns The prefix string, or `undefined` if resolution failed.
  */
@@ -12,8 +12,10 @@ export function resolveMcdataShellPrefixForTerminal(
     projectRoot: string
 ): string | undefined {
     const cfg = vscode.workspace.getConfiguration('sfmcData');
+    const mcdataSource = normalizeMcdataSource(cfg.get<string>('mcdataSource'));
     const customPath = cfg.get<string>('mcdataPath');
     const result = buildMcdataShellPrefix({
+        mcdataSource,
         customPath: customPath ?? '',
         projectRoot,
         extensionPath: context.extensionPath,

@@ -4,6 +4,7 @@ import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../t
 import { buildImportArgs } from '../argbuilder';
 import { resolveContextFiles } from './contextUtils';
 import { promptOptionalClearBeforeImport } from '../importClearPrompts';
+import { resolveImportWriteMode } from '../importMode';
 
 export function registerContextImportCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
@@ -11,11 +12,6 @@ export function registerContextImportCommand(context: vscode.ExtensionContext): 
             contextImportDE(context, uri, uris)
         )
     );
-}
-
-function resolveImportMode(cfg: vscode.WorkspaceConfiguration): 'upsert' | 'insert' {
-    const raw = cfg.get<string>('defaultMode') ?? 'upsert';
-    return raw === 'insert' ? 'insert' : 'upsert';
 }
 
 async function contextImportDE(
@@ -35,8 +31,10 @@ async function contextImportDE(
 
     const cfg = vscode.workspace.getConfiguration('sfmcData');
     const format = cfg.get<string>('defaultFormat') ?? 'csv';
-    const mode = resolveImportMode(cfg);
     const useGit = cfg.get<boolean>('useGitFilenames') === true;
+
+    const mode = await resolveImportWriteMode(cfg);
+    if (mode === undefined) return;
 
     const clearChoice = await promptOptionalClearBeforeImport();
 

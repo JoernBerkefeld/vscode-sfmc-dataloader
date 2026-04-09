@@ -5,6 +5,7 @@ import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../t
 import { buildCrossBuImportArgs, buildFileToMultiBuImportArgs } from '../argbuilder';
 import { resolveContextFiles } from './contextUtils';
 import { promptOptionalClearBeforeImport } from '../importClearPrompts';
+import { resolveImportWriteMode } from '../importMode';
 
 export function registerContextImportToBUCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
@@ -12,11 +13,6 @@ export function registerContextImportToBUCommand(context: vscode.ExtensionContex
             contextImportToBU(context, uri, uris)
         )
     );
-}
-
-function resolveImportMode(cfg: vscode.WorkspaceConfiguration): 'upsert' | 'insert' {
-    const raw = cfg.get<string>('defaultMode') ?? 'upsert';
-    return raw === 'insert' ? 'insert' : 'upsert';
 }
 
 async function contextImportToBU(
@@ -58,8 +54,10 @@ async function contextImportToBU(
 
     const cfg = vscode.workspace.getConfiguration('sfmcData');
     const format = cfg.get<string>('defaultFormat') ?? 'csv';
-    const mode = resolveImportMode(cfg);
     const useGit = cfg.get<boolean>('useGitFilenames') === true;
+
+    const mode = await resolveImportWriteMode(cfg);
+    if (mode === undefined) return;
 
     const clearChoice = await promptOptionalClearBeforeImport();
 

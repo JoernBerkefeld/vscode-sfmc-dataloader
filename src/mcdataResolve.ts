@@ -60,23 +60,64 @@ export function bundledMcdataScriptPath(extensionPath: string): string {
     return path.join(extensionPath, 'out', 'mcdata.bundled.cjs');
 }
 
+/** How the extension resolves the `mcdata` executable for the integrated terminal. */
+export type McdataSource = 'bundled' | 'auto' | 'custom';
+
+const VALID_MCDATA_SOURCES: readonly McdataSource[] = ['bundled', 'auto', 'custom'];
+
 /**
- * Resolution order: custom path → workspace .bin → global PATH → bundled `node …/mcdata.bundled.cjs`.
+ * Normalizes a configuration value to {@link McdataSource}. Unknown values default to `bundled`.
+ */
+export function normalizeMcdataSource(raw: string | undefined): McdataSource {
+    if (raw && (VALID_MCDATA_SOURCES as readonly string[]).includes(raw)) {
+        return raw as McdataSource;
+    }
+    return 'bundled';
+}
+
+function bundledPrefixOrError(extensionPath: string, deps?: McdataResolveDeps): { prefix: string } | { error: string } {
+    const exists = deps?.existsSync ?? fs.existsSync;
+    const bundled = bundledMcdataScriptPath(extensionPath);
+    if (!exists(bundled)) {
+        return {
+            error: `Bundled mcdata not found at ${bundled}. Reinstall the extension or set sfmcData.mcdataSource to "auto" or "custom".`,
+        };
+    }
+    return { prefix: `node ${quoteShellToken(bundled)}` };
+}
+
+/**
+ * Resolution order depends on `mcdataSource`:
+ * - **bundled** — only the minified CLI under the extension (`node …/out/mcdata.bundled.cjs`).
+ * - **auto** — workspace `node_modules/.bin/mcdata` → `mcdata` on `PATH` → bundled script.
+ * - **custom** — `customPath` after trim (quoted); empty path is an error.
  */
 export function buildMcdataShellPrefix(
     options: {
+        mcdataSource: McdataSource;
         customPath: string | undefined;
         projectRoot: string;
         extensionPath: string;
     },
     deps?: McdataResolveDeps
 ): { prefix: string } | { error: string } {
-    const exists = deps?.existsSync ?? fs.existsSync;
-    const custom = options.customPath?.trim();
-    if (custom) {
+    const source = options.mcdataSource;
+
+    if (source === 'custom') {
+        const custom = options.customPath?.trim() ?? '';
+        if (!custom) {
+            return {
+                error: 'Set sfmcData.mcdataPath to your mcdata executable when sfmcData.mcdataSource is "custom".',
+            };
+        }
         return { prefix: quoteShellToken(custom) };
     }
 
+    if (source === 'bundled') {
+        return bundledPrefixOrError(options.extensionPath, deps);
+    }
+
+    // auto
     const ws = getWorkspaceBinMcdata(options.projectRoot, deps);
     if (ws) {
         return { prefix: quoteShellToken(ws) };
@@ -86,12 +127,5 @@ export function buildMcdataShellPrefix(
         return { prefix: 'mcdata' };
     }
 
-    const bundled = bundledMcdataScriptPath(options.extensionPath);
-    if (!exists(bundled)) {
-        return {
-            error: `Bundled mcdata not found at ${bundled}. Reinstall the extension or set sfmcData.mcdataPath.`,
-        };
-    }
-
-    return { prefix: `node ${quoteShellToken(bundled)}` };
+    return bundledPrefixOrError(options.extensionPath, deps);
 }
