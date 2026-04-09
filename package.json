@@ -4,7 +4,7 @@
     "description": "Export and import Marketing Cloud Data Extension rows via the mcdata CLI (sfmc-dataloader).",
     "author": "Jörn Berkefeld",
     "license": "MIT",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "repository": {
         "type": "git",
         "url": "https://github.com/JoernBerkefeld/vscode-sfmc-data.git"
@@ -45,7 +45,7 @@
         "onStartupFinished"
     ],
     "dependencies": {
-        "sfmc-dataloader": "^1.2.0"
+        "sfmc-dataloader": "^2.0.0"
     },
     "contributes": {
         "commands": [
@@ -139,7 +139,7 @@
             "explorer/context": [
                 {
                     "submenu": "sfmc-data.explorerContextMenu",
-                    "when": "resourceFilename =~ /\\.dataExtension-(meta\\.json|doc\\.md)$/ || resourceFilename =~ /\\+MCDATA\\+/",
+                    "when": "resourceFilename =~ /\\.dataExtension-(meta\\.json|doc\\.md)$/ || resourceFilename =~ /\\.mcdata\\./",
                     "group": "sfmc@1"
                 }
             ],
@@ -170,33 +170,28 @@
                     "default": "",
                     "markdownDescription": "Optional path to the `mcdata` binary (highest priority). If empty: use workspace `node_modules/.bin/mcdata` when present, else `mcdata` on `PATH`, else the `sfmc-dataloader` version bundled with this extension (`node …/mcdata.mjs`). Requires `node` on your terminal `PATH` for the bundled CLI."
                 },
-                "sfmcData.importApi": {
-                    "type": "string",
-                    "enum": [
-                        "async",
-                        "sync"
-                    ],
-                    "enumDescriptions": [
-                        "Use the asynchronous DE rows API (recommended for large files)",
-                        "Use the synchronous DE rows API (immediate error feedback)"
-                    ],
-                    "default": "async",
-                    "description": "REST API family used for imports."
+                "sfmcData.useGitFilenames": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Append --git to every mcdata invocation (stable *.mcdata.<ext> filenames without a timestamp)."
+                },
+                "sfmcData.promptClearBeforeImport": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "After choosing import options, prompt whether to clear target DE rows before import (two-step confirmation)."
                 },
                 "sfmcData.defaultMode": {
                     "type": "string",
                     "enum": [
                         "upsert",
-                        "insert",
-                        "update"
+                        "insert"
                     ],
                     "enumDescriptions": [
-                        "Insert new rows, update existing rows (default)",
-                        "Insert new rows only (sync API only)",
-                        "Update existing rows only (sync API only)"
+                        "Update if primary key exists, else insert (async bulk API)",
+                        "Insert new rows only (async bulk API)"
                     ],
                     "default": "upsert",
-                    "description": "Default row write mode for imports."
+                    "description": "Default row write mode for imports (async REST bulk endpoints only)."
                 },
                 "sfmcData.defaultFormat": {
                     "type": "string",
@@ -218,14 +213,17 @@
         "watch": "npm run esbuild -- --watch",
         "package": "npx @vscode/vsce package",
         "package:test": "npx @vscode/vsce package --pre-release -o sfmc-data-BETA.vsix",
-        "lint": "eslint src",
+        "lint": "eslint \"src/**/*.ts\"",
         "test": "node --test out/test/**/*.test.js"
     },
     "devDependencies": {
+        "@eslint/js": "^10.0.1",
         "@types/node": "^22",
         "@types/vscode": "^1.101.0",
         "@vscode/vsce": "^3.7.1",
         "esbuild": "^0.25.0",
-        "typescript": "^5.9.2"
+        "eslint": "^10.1.0",
+        "typescript": "^5.9.2",
+        "typescript-eslint": "^8.57.2"
     }
 }

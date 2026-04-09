@@ -38,7 +38,6 @@ async function contextExportFromBUs(
 
     const allCredBus = getAllCredBus(mcdevrc);
 
-    // Multi-select with the current file's BU pre-selected
     const selectedSources = await vscode.window.showQuickPick(
         allCredBus.map((cb) => ({ label: cb, picked: cb === credBu })),
         {
@@ -54,9 +53,10 @@ async function contextExportFromBUs(
 
     const cfg = vscode.workspace.getConfiguration('sfmcData');
     const format = cfg.get<string>('defaultFormat') ?? 'csv';
+    const useGit = cfg.get<boolean>('useGitFilenames') === true;
 
     const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
     if (prefix === undefined) return;
-    const args = buildMultiBuExportArgs({ fromCredBus, deKeys, format });
+    const args = buildMultiBuExportArgs({ fromCredBus, deKeys, format, useGit });
     spawnMcdataInTerminal(projectRoot, prefix, args);
 }

@@ -31,7 +31,6 @@ async function exportDEMultiBU(context: vscode.ExtensionContext): Promise<void> 
         return;
     }
 
-    // Pick a single credential — the multi-BU picker below is scoped to it
     const credential =
         credentials.length === 1
             ? credentials[0]
@@ -47,7 +46,6 @@ async function exportDEMultiBU(context: vscode.ExtensionContext): Promise<void> 
         return;
     }
 
-    // Multi-select BU picker
     const selectedBUs = await vscode.window.showQuickPick(
         businessUnits.map((bu) => ({ label: bu, picked: false })),
         {
@@ -73,10 +71,11 @@ async function exportDEMultiBU(context: vscode.ExtensionContext): Promise<void> 
 
     const cfg = vscode.workspace.getConfiguration('sfmcData');
     const format = cfg.get<string>('defaultFormat') ?? 'csv';
+    const useGit = cfg.get<boolean>('useGitFilenames') === true;
 
     const fromCredBus = selectedBUs.map(({ label }) => `${credential}/${label}`);
     const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
     if (prefix === undefined) return;
-    const args = buildMultiBuExportArgs({ fromCredBus, deKeys, format });
+    const args = buildMultiBuExportArgs({ fromCredBus, deKeys, format, useGit });
     spawnMcdataInTerminal(projectRoot, prefix, args);
 }

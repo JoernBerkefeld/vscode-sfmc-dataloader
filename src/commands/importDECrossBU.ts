@@ -3,11 +3,17 @@ import { findMcdevProjectRoot, readMcdevrc } from '../config';
 import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
 import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
 import { buildCrossBuImportArgs } from '../argbuilder';
+import { promptOptionalClearBeforeImport } from '../importClearPrompts';
 
 export function registerImportCrossBUCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.commands.registerCommand('sfmc-data.importDECrossBU', () => importDECrossBU(context))
     );
+}
+
+function resolveImportMode(cfg: vscode.WorkspaceConfiguration): 'upsert' | 'insert' {
+    const raw = cfg.get<string>('defaultMode') ?? 'upsert';
+    return raw === 'insert' ? 'insert' : 'upsert';
 }
 
 async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> {
@@ -30,8 +36,6 @@ async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> 
         void vscode.window.showErrorMessage('No credentials found in .mcdevrc.json.');
         return;
     }
-
-    // ── Select source ──────────────────────────────────────────────────────
 
     const srcCredential =
         credentials.length === 1
@@ -56,10 +60,6 @@ async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> 
                   placeHolder: 'Select source Business Unit',
               });
     if (!srcBU) return;
-
-    // ── Select targets ─────────────────────────────────────────────────────
-    // Targets are chosen from the same credential for simplicity; users who
-    // need cross-credential targets can run the CLI directly.
 
     const tgtCredential =
         credentials.length === 1
@@ -86,8 +86,6 @@ async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> 
     );
     if (!selectedTargetBUs || selectedTargetBUs.length === 0) return;
 
-    // ── DE keys ────────────────────────────────────────────────────────────
-
     const deInput = await vscode.window.showInputBox({
         title: 'SFMC Data — Import (Cross-BU) — DE key(s)',
         prompt: 'Enter one or more DE customer keys (comma-separated)',
@@ -101,12 +99,12 @@ async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> 
         .map((k) => k.trim())
         .filter(Boolean);
 
-    // ── Build and run ──────────────────────────────────────────────────────
-
     const cfg = vscode.workspace.getConfiguration('sfmcData');
     const format = cfg.get<string>('defaultFormat') ?? 'csv';
-    const api = cfg.get<string>('importApi') ?? 'async';
-    const mode = cfg.get<string>('defaultMode') ?? 'upsert';
+    const mode = resolveImportMode(cfg);
+    const useGit = cfg.get<boolean>('useGitFilenames') === true;
+
+    const clearChoice = await promptOptionalClearBeforeImport();
 
     const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
     if (prefix === undefined) return;
@@ -115,10 +113,10 @@ async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> 
         toCredBus: selectedTargetBUs.map(({ label }) => `${tgtCredential}/${label}`),
         deKeys,
         format,
-        api,
         mode,
-        clearBeforeImport: false,
-        acceptClearRisk: false,
+        clearBeforeImport: clearChoice.clearBeforeImport,
+        acceptClearRisk: clearChoice.acceptClearRisk,
+        useGit,
     });
     spawnMcdataInTerminal(projectRoot, prefix, args);
 }

@@ -4,6 +4,7 @@ import { getAllCredBus } from '../mcdevrcParser';
 import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
 import { buildCrossBuImportArgs, buildFileToMultiBuImportArgs } from '../argbuilder';
 import { resolveContextFiles } from './contextUtils';
+import { promptOptionalClearBeforeImport } from '../importClearPrompts';
 
 export function registerContextImportToBUCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
@@ -11,6 +12,11 @@ export function registerContextImportToBUCommand(context: vscode.ExtensionContex
             contextImportToBU(context, uri, uris)
         )
     );
+}
+
+function resolveImportMode(cfg: vscode.WorkspaceConfiguration): 'upsert' | 'insert' {
+    const raw = cfg.get<string>('defaultMode') ?? 'upsert';
+    return raw === 'insert' ? 'insert' : 'upsert';
 }
 
 async function contextImportToBU(
@@ -38,7 +44,6 @@ async function contextImportToBU(
 
     const allCredBus = getAllCredBus(mcdevrc);
 
-    // Show multi-select of all available BUs as targets
     const selectedTargets = await vscode.window.showQuickPick(
         allCredBus.map((cb) => ({ label: cb, picked: false })),
         {
@@ -53,37 +58,37 @@ async function contextImportToBU(
 
     const cfg = vscode.workspace.getConfiguration('sfmcData');
     const format = cfg.get<string>('defaultFormat') ?? 'csv';
-    const api = cfg.get<string>('importApi') ?? 'async';
-    const mode = cfg.get<string>('defaultMode') ?? 'upsert';
+    const mode = resolveImportMode(cfg);
+    const useGit = cfg.get<boolean>('useGitFilenames') === true;
+
+    const clearChoice = await promptOptionalClearBeforeImport();
 
     const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
     if (prefix === undefined) return;
 
     if (parsed[0].type === 'data') {
-        // File mode: --to + --file (no source BU auth needed)
         const filePaths = parsed.map((f) => f.filePath);
         const args = buildFileToMultiBuImportArgs({
             filePaths,
             toCredBus,
             format,
-            api,
             mode,
-            clearBeforeImport: false,
-            acceptClearRisk: false,
+            clearBeforeImport: clearChoice.clearBeforeImport,
+            acceptClearRisk: clearChoice.acceptClearRisk,
+            useGit,
         });
         spawnMcdataInTerminal(projectRoot, prefix, args);
     } else {
-        // API mode: --from + --to + --de (source BU fetched live)
         const deKeys = parsed.map((f) => f.deKey);
         const args = buildCrossBuImportArgs({
             fromCredBu: credBu,
             toCredBus,
             deKeys,
             format,
-            api,
             mode,
-            clearBeforeImport: false,
-            acceptClearRisk: false,
+            clearBeforeImport: clearChoice.clearBeforeImport,
+            acceptClearRisk: clearChoice.acceptClearRisk,
+            useGit,
         });
         spawnMcdataInTerminal(projectRoot, prefix, args);
     }

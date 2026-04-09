@@ -37,10 +37,48 @@ export function escapeHtml(s: string): string {
     return s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
-function inlineMarkdown(escaped: string): string {
+/** Bold and inline code on text that is already HTML-escaped. */
+function inlineBoldAndCode(escaped: string): string {
     let s = escaped.replaceAll(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     s = s.replaceAll(/`([^`]+)`/g, '<code>$1</code>');
     return s;
+}
+
+const MD_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g;
+
+/** Escape a string for use inside a double-quoted HTML attribute value. */
+function escapeHtmlAttributeValue(s: string): string {
+    return s.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
+}
+
+/**
+ * Renders inline markdown: optional [label](https://...) links (http/https only), **bold**, `code`.
+ * Link labels support nested bold/code after the label substring is extracted.
+ */
+export function renderInlineRaw(raw: string): string {
+    let out = '';
+    let last = 0;
+    let m: RegExpExecArray | null;
+    MD_LINK_RE.lastIndex = 0;
+    while ((m = MD_LINK_RE.exec(raw)) !== null) {
+        out += inlineBoldAndCode(escapeHtml(raw.slice(last, m.index)));
+        const label = m[1] ?? '';
+        const urlRaw = m[2] ?? '';
+        try {
+            const u = new URL(urlRaw);
+            if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+                throw new Error('unsupported scheme');
+            }
+            const labelHtml = inlineBoldAndCode(escapeHtml(label));
+            const href = escapeHtmlAttributeValue(u.href);
+            out += `<a href="${href}" target="_blank" rel="noopener noreferrer">${labelHtml}</a>`;
+        } catch {
+            out += inlineBoldAndCode(escapeHtml(m[0]!));
+        }
+        last = m.index + m[0]!.length;
+    }
+    out += inlineBoldAndCode(escapeHtml(raw.slice(last)));
+    return out;
 }
 
 function renderMarkdownChunk(chunk: string): string {
@@ -59,13 +97,13 @@ function renderMarkdownChunk(chunk: string): string {
         const h3 = line.match(/^###\s+(.+)$/);
         if (h3) {
             closeUl();
-            out.push(`<h3>${inlineMarkdown(escapeHtml(h3[1]!.trim()))}</h3>`);
+            out.push(`<h3>${renderInlineRaw(h3[1]!.trim())}</h3>`);
             continue;
         }
         const h2 = line.match(/^##\s+(.+)$/);
         if (h2) {
             closeUl();
-            out.push(`<h2>${inlineMarkdown(escapeHtml(h2[1]!.trim()))}</h2>`);
+            out.push(`<h2>${renderInlineRaw(h2[1]!.trim())}</h2>`);
             continue;
         }
         const bullet = line.match(/^\s*-\s+(.+)$/);
@@ -74,7 +112,7 @@ function renderMarkdownChunk(chunk: string): string {
                 out.push('<ul>');
                 inUl = true;
             }
-            out.push(`<li>${inlineMarkdown(escapeHtml(bullet[1]!.trim()))}</li>`);
+            out.push(`<li>${renderInlineRaw(bullet[1]!.trim())}</li>`);
             continue;
         }
         if (line.trim() === '') {
@@ -82,7 +120,7 @@ function renderMarkdownChunk(chunk: string): string {
             continue;
         }
         closeUl();
-        out.push(`<p>${inlineMarkdown(escapeHtml(line.trim()))}</p>`);
+        out.push(`<p>${renderInlineRaw(line.trim())}</p>`);
     }
     closeUl();
     return out.join('');

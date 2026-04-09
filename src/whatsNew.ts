@@ -4,7 +4,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { ExtensionContext, Uri, ViewColumn, WebviewPanel, window } from 'vscode';
+import { ExtensionContext, Uri, ViewColumn, WebviewPanel, env, window } from 'vscode';
 
 import {
     compareSemver,
@@ -36,7 +36,7 @@ function buildWhatsNewHtml(bodyHtml: string, title: string, nonce: string, cspSo
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${cspSource} 'unsafe-inline'; img-src ${cspSource} https: data:;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${cspSource} 'unsafe-inline'; img-src ${cspSource} https: data:; script-src 'nonce-${nonce}';" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${escapeHtml(title)}</title>
   <style nonce="${nonce}">
@@ -68,7 +68,23 @@ function buildWhatsNewHtml(bodyHtml: string, title: string, nonce: string, cspSo
       border-radius: 3px;
     }
     strong { font-weight: 600; }
+    a { color: var(--vscode-textLink-foreground); text-decoration: none; }
+    a:hover { text-decoration: underline; }
   </style>
+  <script nonce="${nonce}">
+    (function () {
+      var vscode = acquireVsCodeApi();
+      document.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.closest) return;
+        var a = t.closest('a[href^="http"]');
+        if (!a || !a.href) return;
+        e.preventDefault();
+        e.stopPropagation();
+        vscode.postMessage({ type: 'openExternal', url: a.href });
+      }, true);
+    })();
+  </script>
 </head>
 <body>
   <h2>${escapeHtml(title)}</h2>
@@ -106,12 +122,17 @@ export async function showWhatsNewPanel(context: ExtensionContext, extensionDisp
         title,
         ViewColumn.Active,
         {
-            enableScripts: false,
+            enableScripts: true,
             retainContextWhenHidden: true,
             localResourceRoots: [Uri.file(context.extensionPath)],
         },
     );
     panel.webview.html = buildWhatsNewHtml(bodyHtml, title, nonce, panel.webview.cspSource);
+    panel.webview.onDidReceiveMessage((msg: { type?: string; url?: string }) => {
+        if (msg?.type === 'openExternal' && typeof msg.url === 'string') {
+            void env.openExternal(Uri.parse(msg.url));
+        }
+    });
     panel.onDidDispose(() => {
         panel = undefined;
     });

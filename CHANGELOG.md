@@ -3,11 +3,23 @@
 All notable changes to this extension will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.6.0] — 2026-04-09
+
+### Added
+
+- Settings `sfmcData.useGitFilenames` (append `--git` to every `mcdata` spawn) and `sfmcData.promptClearBeforeImport` (optional two-step prompt for `--clear-before-import` + `--i-accept-clear-data-risk`).
+- What's New webview: Markdown links `[label](https://...)` render as external links (`openExternal`).
+
+### Changed
+
+- Requires `sfmc-dataloader` **v2** (breaking CLI: `.mcdata.` export filenames, async-only insert/upsert, `--git`). Explorer context menu matches `data/` files whose names contain `.mcdata.`.
+- Removed `sfmcData.importApi`; imports always use the async bulk REST API. `sfmcData.defaultMode` is `upsert` or `insert` only.
+
 ## [0.5.0] — 2026-04-08
 
 ### Changed
 
-- The extension bundles [`sfmc-dataloader`](https://www.npmjs.com/package/sfmc-dataloader) in the VSIX. When no override is configured, the `mcdata` command is resolved in order: optional `sfmcData.mcdataPath` → workspace `node_modules/.bin/mcdata` → `mcdata` on the integrated terminal `PATH` → bundled `node …/mcdata.mjs` (Node.js must remain on `PATH` in that terminal).
+- The extension bundles [sfmc-dataloader](https://www.npmjs.com/package/sfmc-dataloader) in the VSIX. When no override is configured, the `mcdata` command is resolved in order: optional `sfmcData.mcdataPath` → workspace `node_modules/.bin/mcdata` → `mcdata` on the integrated terminal `PATH` → bundled `node …/mcdata.mjs` (Node.js must remain on `PATH` in that terminal).
 
 ## [0.4.0] — 2026-04-08
 
@@ -19,7 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
-- **Explorer context menu** — right-click any `*.dataExtension-meta.json`, `*.dataExtension-doc.md` (under `retrieve/.../dataExtension/`), or `+MCDATA+` export file (under `data/.../`) to access an **SFMC Data Loader** submenu with four commands:
+- **Explorer context menu** — right-click any `*.dataExtension-meta.json`, `*.dataExtension-doc.md` (under `retrieve/.../dataExtension/`), or export files whose names contain `.mcdata.` (under `data/.../`) to access an **SFMC Data Loader** submenu with four commands:
   - **Export Data** — runs `mcdata export <cred/bu> --de <key>...` for the selected file(s)
   - **Export from BUs...** — opens a multi-select BU picker (pre-selects the current file's BU) and runs `mcdata export --from ...` across the chosen BUs
   - **Import Data** — for `retrieve/` files: `mcdata import <cred/bu> --de <key>...`; for `data/` files: `mcdata import <cred/bu> --file <path>...`

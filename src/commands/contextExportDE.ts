@@ -29,10 +29,11 @@ async function contextExportDE(
 
     const cfg = vscode.workspace.getConfiguration('sfmcData');
     const format = cfg.get<string>('defaultFormat') ?? 'csv';
+    const useGit = cfg.get<boolean>('useGitFilenames') === true;
     const deKeys = parsed.map((f) => f.deKey);
 
     const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
     if (prefix === undefined) return;
-    const args = buildExportArgs(credBu, deKeys, format);
+    const args = buildExportArgs(credBu, deKeys, format, useGit);
     spawnMcdataInTerminal(projectRoot, prefix, args);
 }

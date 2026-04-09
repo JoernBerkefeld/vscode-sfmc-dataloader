@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { compareSemver, markdownToHtml, parseChangelogEntry } from '../whatsNewCore';
+import { compareSemver, markdownToHtml, parseChangelogEntry, renderInlineRaw } from '../whatsNewCore';
 
 describe('whatsNew', () => {
     it('parseChangelogEntry extracts section for version and stops at next header', () => {
@@ -23,5 +23,26 @@ describe('whatsNew', () => {
     it('markdownToHtml renders list and bold', () => {
         const html = markdownToHtml('### Added\n\n- **Bold** word\n');
         assert.ok(html.includes('<strong>Bold</strong>'));
+    });
+
+    it('renderInlineRaw emits safe https link with escaped label', () => {
+        const html = renderInlineRaw('[sfmc-dataloader](https://www.npmjs.com/package/sfmc-dataloader)');
+        assert.ok(html.includes('<a href="https://www.npmjs.com/package/sfmc-dataloader"'));
+        assert.ok(html.includes('target="_blank"'));
+        assert.ok(html.includes('rel="noopener noreferrer"'));
+        assert.ok(html.includes('>sfmc-dataloader</a>'));
+    });
+
+    it('markdownToHtml renders changelog-style npm link in list item', () => {
+        const html = markdownToHtml(
+            '- Bundles [sfmc-dataloader](https://www.npmjs.com/package/sfmc-dataloader) in the VSIX.\n',
+        );
+        assert.ok(html.includes('<a href="https://www.npmjs.com/package/sfmc-dataloader"'));
+    });
+
+    it('renderInlineRaw supports bold inside link label', () => {
+        const html = renderInlineRaw('[**pkg**](https://example.com/)');
+        assert.ok(html.includes('<a href="https://example.com/"'));
+        assert.ok(html.includes('<strong>pkg</strong>'));
     });
 });

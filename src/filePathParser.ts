@@ -5,6 +5,7 @@
  */
 
 import * as path from 'node:path';
+import { parseExportBasename } from 'sfmc-dataloader';
 
 export type ParsedContextFile = {
     /** Whether the file lives under `retrieve/` (definition) or `data/` (export). */
@@ -27,7 +28,7 @@ export type ParsedContextFile = {
  * Recognised patterns (relative to `projectRoot`):
  * - `retrieve/<cred>/<bu>/dataExtension/<key>.dataExtension-meta.json`
  * - `retrieve/<cred>/<bu>/dataExtension/<key>.dataExtension-doc.md`
- * - `data/<cred>/<bu>/<key>+MCDATA+<timestamp>.<ext>`
+ * - `data/<cred>/<bu>/<basename>` where basename matches `sfmc-dataloader` export naming (`.mcdata.`)
  *
  * @param filePath   Absolute path of the selected file.
  * @param projectRoot Absolute path of the mcdev project root.
@@ -57,20 +58,22 @@ export function parseContextFilePath(
         };
     }
 
-    // data/<cred>/<bu>/<key>+MCDATA+<timestamp>.<ext>
+    // data/<cred>/<bu>/<export-basename>
     if (parts.length === 4 && parts[0] === 'data') {
-        const mcdataIdx = parts[3].indexOf('+MCDATA+');
-        if (mcdataIdx === -1) return undefined;
-        const deKey = parts[3].substring(0, mcdataIdx);
-        if (!deKey) return undefined;
-        return {
-            type: 'data',
-            cred: parts[1],
-            bu: parts[2],
-            credBu: `${parts[1]}/${parts[2]}`,
-            deKey,
-            filePath,
-        };
+        try {
+            const { customerKey: deKey } = parseExportBasename(parts[3]);
+            if (!deKey) return undefined;
+            return {
+                type: 'data',
+                cred: parts[1],
+                bu: parts[2],
+                credBu: `${parts[1]}/${parts[2]}`,
+                deKey,
+                filePath,
+            };
+        } catch {
+            return undefined;
+        }
     }
 
     return undefined;

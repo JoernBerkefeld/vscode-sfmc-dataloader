@@ -52,9 +52,9 @@ describe('parseContextFilePath — retrieve files', () => {
 });
 
 describe('parseContextFilePath — data files', () => {
-    it('parses a +MCDATA+ CSV file', () => {
+    it('parses a timestamped .mcdata. CSV file', () => {
         const result = parseContextFilePath(
-            abs('data', 'MyCred', 'MyBU', 'Contact_DE+MCDATA+2026-04-08T10-00-00.000Z.csv'),
+            abs('data', 'MyCred', 'MyBU', 'Contact_DE.mcdata.2026-04-08T10-00-00.000Z.csv'),
             ROOT
         );
         assert.ok(result);
@@ -65,9 +65,9 @@ describe('parseContextFilePath — data files', () => {
         assert.equal(result.deKey, 'Contact_DE');
     });
 
-    it('parses a +MCDATA+ JSON file', () => {
+    it('parses a --git style .mcdata. JSON file', () => {
         const result = parseContextFilePath(
-            abs('data', 'ProdCred', 'ProdBU', 'Order_DE+MCDATA+2026-04-08T10-00-00.000Z.json'),
+            abs('data', 'ProdCred', 'ProdBU', 'Order_DE.mcdata.json'),
             ROOT
         );
         assert.ok(result);
@@ -76,7 +76,7 @@ describe('parseContextFilePath — data files', () => {
         assert.equal(result.credBu, 'ProdCred/ProdBU');
     });
 
-    it('returns undefined for a data file without +MCDATA+ sentinel', () => {
+    it('returns undefined for a data file without valid mcdata basename', () => {
         const result = parseContextFilePath(
             abs('data', 'MyCred', 'MyBU', 'Contact_DE.csv'),
             ROOT
@@ -86,7 +86,7 @@ describe('parseContextFilePath — data files', () => {
 
     it('returns undefined for a file one level too deep in data/', () => {
         const result = parseContextFilePath(
-            abs('data', 'MyCred', 'MyBU', 'sub', 'Contact_DE+MCDATA+2026-04-08T10-00-00.000Z.csv'),
+            abs('data', 'MyCred', 'MyBU', 'sub', 'Contact_DE.mcdata.2026-04-08T10-00-00.000Z.csv'),
             ROOT
         );
         assert.equal(result, undefined);

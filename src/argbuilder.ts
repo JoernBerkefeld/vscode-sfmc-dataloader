@@ -7,7 +7,6 @@ export type ImportOptions = {
     deKeys?: string[];
     filePaths?: string[];
     format: string;
-    api: string;
     mode: string;
     clearBeforeImport: boolean;
     acceptClearRisk: boolean;
@@ -19,6 +18,7 @@ export type MultiBuExportOptions = {
     deKeys: string[];
     format: string;
     jsonPretty?: boolean;
+    useGit?: boolean;
 };
 
 export type FileToMultiBuImportOptions = {
@@ -27,10 +27,10 @@ export type FileToMultiBuImportOptions = {
     /** One or more target `<credential>/<businessUnit>` tokens — maps to repeated `--to` flags */
     toCredBus: string[];
     format: string;
-    api: string;
     mode: string;
     clearBeforeImport: boolean;
     acceptClearRisk: boolean;
+    useGit?: boolean;
 };
 
 export type CrossBuImportOptions = {
@@ -40,10 +40,10 @@ export type CrossBuImportOptions = {
     toCredBus: string[];
     deKeys: string[];
     format: string;
-    api: string;
     mode: string;
     clearBeforeImport: boolean;
     acceptClearRisk: boolean;
+    useGit?: boolean;
 };
 
 /**
@@ -53,8 +53,11 @@ export type CrossBuImportOptions = {
  * @param deKeys - one or more DE customer keys
  * @param format - csv | tsv | json
  */
-export function buildExportArgs(credBu: string, deKeys: string[], format: string): string[] {
+export function buildExportArgs(credBu: string, deKeys: string[], format: string, useGit?: boolean): string[] {
     const args: string[] = ['export', credBu, '--format', format];
+    if (useGit) {
+        args.push('--git');
+    }
     for (const key of deKeys) {
         args.push('--de', key);
     }
@@ -68,6 +71,9 @@ export function buildExportArgs(credBu: string, deKeys: string[], format: string
  */
 export function buildMultiBuExportArgs(options: MultiBuExportOptions): string[] {
     const args: string[] = ['export', '--format', options.format];
+    if (options.useGit) {
+        args.push('--git');
+    }
     for (const credBu of options.fromCredBus) {
         args.push('--from', credBu);
     }
@@ -89,7 +95,10 @@ export function buildMultiBuExportArgs(options: MultiBuExportOptions): string[] 
  * @param options - file-to-multi-BU import settings
  */
 export function buildFileToMultiBuImportArgs(options: FileToMultiBuImportOptions): string[] {
-    const args: string[] = ['import', '--format', options.format, '--api', options.api, '--mode', options.mode];
+    const args: string[] = ['import', '--format', options.format, '--mode', options.mode];
+    if (options.useGit) {
+        args.push('--git');
+    }
     for (const credBu of options.toCredBus) {
         args.push('--to', credBu);
     }
@@ -111,13 +120,10 @@ export function buildFileToMultiBuImportArgs(options: FileToMultiBuImportOptions
  * @param options - cross-BU import settings
  */
 export function buildCrossBuImportArgs(options: CrossBuImportOptions): string[] {
-    const args: string[] = [
-        'import',
-        '--from', options.fromCredBu,
-        '--format', options.format,
-        '--api', options.api,
-        '--mode', options.mode,
-    ];
+    const args: string[] = ['import', '--from', options.fromCredBu, '--format', options.format, '--mode', options.mode];
+    if (options.useGit) {
+        args.push('--git');
+    }
     for (const credBu of options.toCredBus) {
         args.push('--to', credBu);
     }
@@ -142,8 +148,11 @@ export function buildCrossBuImportArgs(options: CrossBuImportOptions): string[] 
  * @param credBu - `<credential>/<businessUnit>` token
  * @param options - import settings derived from VS Code settings and user input
  */
-export function buildImportArgs(credBu: string, options: ImportOptions): string[] {
-    const args: string[] = ['import', credBu, '--format', options.format, '--api', options.api, '--mode', options.mode];
+export function buildImportArgs(credBu: string, options: ImportOptions, useGit?: boolean): string[] {
+    const args: string[] = ['import', credBu, '--format', options.format, '--mode', options.mode];
+    if (useGit) {
+        args.push('--git');
+    }
 
     if (options.deKeys) {
         for (const key of options.deKeys) {

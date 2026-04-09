@@ -14,6 +14,11 @@ describe('buildExportArgs', () => {
         assert.deepEqual(args, ['export', 'myOrg/myBU', '--format', 'csv', '--de', 'DE_Key_1']);
     });
 
+    it('appends --git when requested', () => {
+        const args = buildExportArgs('myOrg/myBU', ['K'], 'csv', true);
+        assert.ok(args.includes('--git'));
+    });
+
     it('produces repeated --de flags for multiple keys', () => {
         const args = buildExportArgs('myOrg/myBU', ['Key_A', 'Key_B'], 'tsv');
         assert.deepEqual(args, [
@@ -39,13 +44,12 @@ describe('buildImportArgs — by DE key', () => {
         const args = buildImportArgs('myOrg/myBU', {
             deKeys: ['DE_Key_1'],
             format: 'csv',
-            api: 'async',
             mode: 'upsert',
             clearBeforeImport: false,
             acceptClearRisk: false,
         });
         assert.deepEqual(args, [
-            'import', 'myOrg/myBU', '--format', 'csv', '--api', 'async', '--mode', 'upsert',
+            'import', 'myOrg/myBU', '--format', 'csv', '--mode', 'upsert',
             '--de', 'DE_Key_1',
         ]);
     });
@@ -54,7 +58,6 @@ describe('buildImportArgs — by DE key', () => {
         const args = buildImportArgs('a/b', {
             deKeys: ['K1', 'K2'],
             format: 'tsv',
-            api: 'sync',
             mode: 'insert',
             clearBeforeImport: false,
             acceptClearRisk: false,
@@ -71,7 +74,6 @@ describe('buildImportArgs — by DE key', () => {
         const args = buildImportArgs('a/b', {
             deKeys: ['K'],
             format: 'csv',
-            api: 'async',
             mode: 'upsert',
             clearBeforeImport: true,
             acceptClearRisk: false,
@@ -84,7 +86,6 @@ describe('buildImportArgs — by DE key', () => {
         const args = buildImportArgs('a/b', {
             deKeys: ['K'],
             format: 'csv',
-            api: 'async',
             mode: 'upsert',
             clearBeforeImport: true,
             acceptClearRisk: true,
@@ -97,13 +98,23 @@ describe('buildImportArgs — by DE key', () => {
         const args = buildImportArgs('a/b', {
             deKeys: ['K'],
             format: 'csv',
-            api: 'async',
             mode: 'upsert',
             clearBeforeImport: false,
             acceptClearRisk: false,
         });
         assert.ok(!args.includes('--clear-before-import'));
         assert.ok(!args.includes('--i-accept-clear-data-risk'));
+    });
+
+    it('does not emit --api', () => {
+        const args = buildImportArgs('a/b', {
+            deKeys: ['K'],
+            format: 'csv',
+            mode: 'upsert',
+            clearBeforeImport: false,
+            acceptClearRisk: false,
+        });
+        assert.ok(!args.includes('--api'));
     });
 });
 
@@ -124,6 +135,16 @@ describe('buildMultiBuExportArgs', () => {
             args.filter((_, i, a) => a[i - 1] === '--de'),
             ['DE1']
         );
+    });
+
+    it('supports --git', () => {
+        const args = buildMultiBuExportArgs({
+            fromCredBus: ['org/Dev'],
+            deKeys: ['K'],
+            format: 'csv',
+            useGit: true,
+        });
+        assert.ok(args.includes('--git'));
     });
 
     it('supports multiple DE keys', () => {
@@ -165,7 +186,6 @@ describe('buildCrossBuImportArgs', () => {
             toCredBus: ['org/QA', 'org/Prod'],
             deKeys: ['DE1'],
             format: 'csv',
-            api: 'async',
             mode: 'upsert',
             clearBeforeImport: false,
             acceptClearRisk: false,
@@ -180,6 +200,7 @@ describe('buildCrossBuImportArgs', () => {
             args.filter((_, i, a) => a[i - 1] === '--de'),
             ['DE1']
         );
+        assert.ok(!args.includes('--api'));
     });
 
     it('includes --clear-before-import when requested', () => {
@@ -188,7 +209,6 @@ describe('buildCrossBuImportArgs', () => {
             toCredBus: ['org/QA'],
             deKeys: ['K'],
             format: 'csv',
-            api: 'async',
             mode: 'upsert',
             clearBeforeImport: true,
             acceptClearRisk: false,
@@ -203,7 +223,6 @@ describe('buildCrossBuImportArgs', () => {
             toCredBus: ['org/QA'],
             deKeys: ['K'],
             format: 'csv',
-            api: 'async',
             mode: 'upsert',
             clearBeforeImport: true,
             acceptClearRisk: true,
@@ -218,7 +237,6 @@ describe('buildCrossBuImportArgs', () => {
             toCredBus: ['org/QA'],
             deKeys: ['K'],
             format: 'csv',
-            api: 'async',
             mode: 'upsert',
             clearBeforeImport: false,
             acceptClearRisk: false,
@@ -231,10 +249,9 @@ describe('buildCrossBuImportArgs', () => {
 describe('buildFileToMultiBuImportArgs', () => {
     it('produces import with --to flags and --file flags (no --from)', () => {
         const args = buildFileToMultiBuImportArgs({
-            filePaths: ['/data/org/bu/My_DE+MCDATA+2026-04-08T10-00-00Z.csv'],
+            filePaths: ['/data/org/bu/My_DE.mcdata.2026-04-08T10-00-00Z.csv'],
             toCredBus: ['org/QA', 'org/Prod'],
             format: 'csv',
-            api: 'async',
             mode: 'upsert',
             clearBeforeImport: false,
             acceptClearRisk: false,
@@ -248,32 +265,30 @@ describe('buildFileToMultiBuImportArgs', () => {
         );
         assert.deepEqual(
             args.filter((_, i, a) => a[i - 1] === '--file'),
-            ['/data/org/bu/My_DE+MCDATA+2026-04-08T10-00-00Z.csv']
+            ['/data/org/bu/My_DE.mcdata.2026-04-08T10-00-00Z.csv']
         );
     });
 
     it('supports multiple files', () => {
         const args = buildFileToMultiBuImportArgs({
-            filePaths: ['/data/org/bu/DE1+MCDATA+ts.csv', '/data/org/bu/DE2+MCDATA+ts.csv'],
+            filePaths: ['/data/org/bu/DE1.mcdata.ts.csv', '/data/org/bu/DE2.mcdata.ts.csv'],
             toCredBus: ['org/QA'],
             format: 'csv',
-            api: 'async',
             mode: 'upsert',
             clearBeforeImport: false,
             acceptClearRisk: false,
         });
         assert.deepEqual(
             args.filter((_, i, a) => a[i - 1] === '--file'),
-            ['/data/org/bu/DE1+MCDATA+ts.csv', '/data/org/bu/DE2+MCDATA+ts.csv']
+            ['/data/org/bu/DE1.mcdata.ts.csv', '/data/org/bu/DE2.mcdata.ts.csv']
         );
     });
 
     it('appends --clear-before-import when requested', () => {
         const args = buildFileToMultiBuImportArgs({
-            filePaths: ['/data/org/bu/K+MCDATA+ts.csv'],
+            filePaths: ['/data/org/bu/K.mcdata.ts.csv'],
             toCredBus: ['org/QA'],
             format: 'csv',
-            api: 'async',
             mode: 'upsert',
             clearBeforeImport: true,
             acceptClearRisk: false,
@@ -286,9 +301,8 @@ describe('buildFileToMultiBuImportArgs', () => {
 describe('buildImportArgs — by file path', () => {
     it('produces --file flags instead of --de', () => {
         const args = buildImportArgs('org/bu', {
-            filePaths: ['/data/org/bu/My_DE+MCDATA+2026-04-01T00-00-00Z.csv'],
+            filePaths: ['/data/org/bu/My_DE.mcdata.2026-04-01T00-00-00Z.csv'],
             format: 'csv',
-            api: 'async',
             mode: 'upsert',
             clearBeforeImport: false,
             acceptClearRisk: false,
@@ -301,7 +315,6 @@ describe('buildImportArgs — by file path', () => {
         const args = buildImportArgs('org/bu', {
             filePaths: ['/a/file1.csv', '/b/file2.csv'],
             format: 'csv',
-            api: 'async',
             mode: 'upsert',
             clearBeforeImport: false,
             acceptClearRisk: false,

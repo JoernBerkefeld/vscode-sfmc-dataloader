@@ -3,11 +3,17 @@ import { findMcdevProjectRoot, readMcdevrc } from '../config';
 import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
 import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
 import { buildImportArgs } from '../argbuilder';
+import { promptOptionalClearBeforeImport } from '../importClearPrompts';
 
 export function registerImportCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.commands.registerCommand('sfmc-data.importDE', () => importDE(context))
     );
+}
+
+function resolveImportMode(cfg: vscode.WorkspaceConfiguration): 'upsert' | 'insert' {
+    const raw = cfg.get<string>('defaultMode') ?? 'upsert';
+    return raw === 'insert' ? 'insert' : 'upsert';
 }
 
 async function importDE(context: vscode.ExtensionContext): Promise<void> {
@@ -69,8 +75,10 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
 
     const cfg = vscode.workspace.getConfiguration('sfmcData');
     const format = cfg.get<string>('defaultFormat') ?? 'csv';
-    const api = cfg.get<string>('importApi') ?? 'async';
-    const mode = cfg.get<string>('defaultMode') ?? 'upsert';
+    const mode = resolveImportMode(cfg);
+    const useGit = cfg.get<boolean>('useGitFilenames') === true;
+
+    const clearChoice = await promptOptionalClearBeforeImport();
 
     const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
     if (prefix === undefined) return;
@@ -90,14 +98,17 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
             .map((k) => k.trim())
             .filter(Boolean);
 
-        const args = buildImportArgs(credBu, {
-            deKeys,
-            format,
-            api,
-            mode,
-            clearBeforeImport: false,
-            acceptClearRisk: false,
-        });
+        const args = buildImportArgs(
+            credBu,
+            {
+                deKeys,
+                format,
+                mode,
+                clearBeforeImport: clearChoice.clearBeforeImport,
+                acceptClearRisk: clearChoice.acceptClearRisk,
+            },
+            useGit
+        );
         spawnMcdataInTerminal(projectRoot, prefix, args);
     } else {
         const uris = await vscode.window.showOpenDialog({
@@ -112,14 +123,17 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
 
         const filePaths = uris.map((u) => u.fsPath);
 
-        const args = buildImportArgs(credBu, {
-            filePaths,
-            format,
-            api,
-            mode,
-            clearBeforeImport: false,
-            acceptClearRisk: false,
-        });
+        const args = buildImportArgs(
+            credBu,
+            {
+                filePaths,
+                format,
+                mode,
+                clearBeforeImport: clearChoice.clearBeforeImport,
+                acceptClearRisk: clearChoice.acceptClearRisk,
+            },
+            useGit
+        );
         spawnMcdataInTerminal(projectRoot, prefix, args);
     }
 }
