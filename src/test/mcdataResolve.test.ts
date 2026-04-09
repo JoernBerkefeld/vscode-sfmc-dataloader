@@ -22,9 +22,9 @@ describe('quoteShellToken', () => {
 });
 
 describe('bundledMcdataScriptPath', () => {
-    it('joins extension path to sfmc-dataloader bin', () => {
+    it('joins extension path to bundled mcdata script', () => {
         const p = bundledMcdataScriptPath('/ext');
-        assert.equal(p, path.join('/ext', 'node_modules', 'sfmc-dataloader', 'bin', 'mcdata.mjs'));
+        assert.equal(p, path.join('/ext', 'out', 'mcdata.bundled.cjs'));
     });
 });
 
@@ -113,7 +113,7 @@ describe('buildMcdataShellPrefix', () => {
 
     it('falls back to bundled node script when PATH has no mcdata', () => {
         const ext = fs.mkdtempSync(path.join(os.tmpdir(), 'sfmc-data-ext-'));
-        const script = path.join(ext, 'node_modules', 'sfmc-dataloader', 'bin', 'mcdata.mjs');
+        const script = path.join(ext, 'out', 'mcdata.bundled.cjs');
         fs.mkdirSync(path.dirname(script), { recursive: true });
         fs.writeFileSync(script, '');
         try {

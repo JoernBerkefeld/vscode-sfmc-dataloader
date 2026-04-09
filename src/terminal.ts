@@ -29,12 +29,12 @@ export function resolveMcdataShellPrefixForTerminal(
  * Opens an integrated terminal, sends the assembled mcdata command, and
  * brings the terminal panel into view.
  *
- * `shellPrefix` may be multiple tokens (e.g. `node "…/mcdata.mjs"`).
+ * `shellPrefix` may be multiple tokens (e.g. `node "…/out/mcdata.bundled.cjs"`).
  * Arguments that contain spaces are quoted so the shell interprets them as
  * single tokens.
  *
  * @param projectRoot - working directory (mcdev project root)
- * @param shellPrefix - resolved command prefix (binary path or `node "…/mcdata.mjs"`)
+ * @param shellPrefix - resolved command prefix (binary path or `node "…/out/mcdata.bundled.cjs"`)
  * @param args - CLI arguments after the prefix
  */
 export function spawnMcdataInTerminal(projectRoot: string, shellPrefix: string, args: string[]): void {

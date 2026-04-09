@@ -44,8 +44,16 @@
     "activationEvents": [
         "onStartupFinished"
     ],
-    "dependencies": {
-        "sfmc-dataloader": "^2.0.0"
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "@types/node": "^22",
+        "@types/vscode": "^1.101.0",
+        "@vscode/vsce": "^3.7.1",
+        "esbuild": "^0.25.0",
+        "eslint": "^10.1.0",
+        "sfmc-dataloader": "^2.0.2",
+        "typescript": "^5.9.2",
+        "typescript-eslint": "^8.57.2"
     },
     "contributes": {
         "commands": [
@@ -168,7 +176,7 @@
                 "sfmcData.mcdataPath": {
                     "type": "string",
                     "default": "",
-                    "markdownDescription": "Optional path to the `mcdata` binary (highest priority). If empty: use workspace `node_modules/.bin/mcdata` when present, else `mcdata` on `PATH`, else the `sfmc-dataloader` version bundled with this extension (`node …/mcdata.mjs`). Requires `node` on your terminal `PATH` for the bundled CLI."
+                    "markdownDescription": "Optional path to the `mcdata` binary (highest priority). If empty: use workspace `node_modules/.bin/mcdata` when present, else `mcdata` on `PATH`, else the minified CLI bundled with this extension (`node …/out/mcdata.bundled.cjs`). Requires `node` on your terminal `PATH` for the bundled CLI."
                 },
                 "sfmcData.useGitFilenames": {
                     "type": "boolean",
@@ -207,23 +215,14 @@
         }
     },
     "scripts": {
-        "vscode:prepublish": "npm run esbuild -- --minify",
+        "vscode:prepublish": "npm run bundle:mcdata && npm run esbuild -- --minify",
+        "bundle:mcdata": "node ./scripts/bundle-mcdata.mjs",
         "esbuild": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap",
-        "compile": "npm run esbuild && tsc -p tsconfig.test.json",
+        "compile": "npm run bundle:mcdata && npm run esbuild && tsc -p tsconfig.test.json",
         "watch": "npm run esbuild -- --watch",
         "package": "npx @vscode/vsce package",
         "package:test": "npx @vscode/vsce package --pre-release -o sfmc-data-BETA.vsix",
         "lint": "eslint \"src/**/*.ts\"",
         "test": "node --test out/test/**/*.test.js"
-    },
-    "devDependencies": {
-        "@eslint/js": "^10.0.1",
-        "@types/node": "^22",
-        "@types/vscode": "^1.101.0",
-        "@vscode/vsce": "^3.7.1",
-        "esbuild": "^0.25.0",
-        "eslint": "^10.1.0",
-        "typescript": "^5.9.2",
-        "typescript-eslint": "^8.57.2"
     }
 }

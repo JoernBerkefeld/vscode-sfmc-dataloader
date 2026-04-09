@@ -1,4 +1,6 @@
 .vscode/**
+scripts/**
+eslint.config.mjs
 **/*.ts
 **/*.map
 .gitignore
@@ -10,4 +12,6 @@
 src/**
 out/test/**
 package-lock.json
+node_modules/**
 !out/extension.js
+!out/mcdata.bundled.cjs

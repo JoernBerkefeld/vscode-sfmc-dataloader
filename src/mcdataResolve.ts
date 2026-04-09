@@ -57,11 +57,11 @@ export function mcdataExistsOnPath(deps?: McdataResolveDeps): boolean {
 }
 
 export function bundledMcdataScriptPath(extensionPath: string): string {
-    return path.join(extensionPath, 'node_modules', 'sfmc-dataloader', 'bin', 'mcdata.mjs');
+    return path.join(extensionPath, 'out', 'mcdata.bundled.cjs');
 }
 
 /**
- * Resolution order: custom path → workspace .bin → global PATH → bundled `node …/mcdata.mjs`.
+ * Resolution order: custom path → workspace .bin → global PATH → bundled `node …/mcdata.bundled.cjs`.
  */
 export function buildMcdataShellPrefix(
     options: {

@@ -20,7 +20,7 @@ jobs:
               with:
                   node-version: "24"
 
-            - run: npm ci
+            - run: npm ci --no-workspaces
             - run: npm run compile
             - name: Run tests
               run: npm test
@@ -34,7 +34,7 @@ jobs:
               with:
                   node-version: "24"
 
-            - run: npm ci
+            - run: npm ci --no-workspaces
             - name: Package VSIX
               run: npx @vscode/vsce package
             - name: Publish to VS Code Marketplace

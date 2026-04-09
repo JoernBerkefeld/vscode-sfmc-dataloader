@@ -5,7 +5,7 @@ A lightweight VS Code extension that surfaces the [`sfmc-dataloader`](https://ww
 ## Requirements
 
 - An mcdev project initialised with [`mcdev`](https://www.npmjs.com/package/mcdev) (`.mcdevrc.json` + `.mcdev-auth.json` in the workspace root)
-- [`Node.js`](https://nodejs.org/) on your **integrated terminal** `PATH` (the extension runs `mcdata` or `node …/mcdata.mjs` in that terminal).
+- [`Node.js`](https://nodejs.org/) on your **integrated terminal** `PATH` (the extension runs `mcdata` or `node …/out/mcdata.bundled.cjs` for the built-in fallback).
 - **Optional:** your own [`sfmc-dataloader`](https://www.npmjs.com/package/sfmc-dataloader) install if you want a specific version. The extension **bundles** a compatible `sfmc-dataloader` and uses it when no other `mcdata` is chosen. Precedence when `sfmcData.mcdataPath` is empty:
   1. Workspace `node_modules/.bin/mcdata` (project-local install)
   2. `mcdata` on your `PATH` (e.g. global `npm install -g sfmc-dataloader`)

@@ -3,6 +3,20 @@
 All notable changes to this extension will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.6.2] — 2026-04-09
+
+### Changed
+
+- Packaged VSIX includes a minified `out/mcdata.bundled.cjs` CLI fallback instead of shipping full `node_modules` (smaller extension download). `sfmc-dataloader` is a devDependency used only at build time to produce that bundle.
+
+### Fixed
+
+- Bundled `mcdata --version` prints the dataloader semver (banner inject + `sfmc-dataloader` ≥ 2.0.2).
+
+### Dependencies
+
+- Bump `sfmc-dataloader` to 2.0.2.
+
 ## [0.6.1] — 2026-04-09
 
 ### Fixed
@@ -25,7 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
-- The extension bundles [sfmc-dataloader](https://www.npmjs.com/package/sfmc-dataloader) in the VSIX. When no override is configured, the `mcdata` command is resolved in order: optional `sfmcData.mcdataPath` → workspace `node_modules/.bin/mcdata` → `mcdata` on the integrated terminal `PATH` → bundled `node …/mcdata.mjs` (Node.js must remain on `PATH` in that terminal).
+- The extension bundles a minified `mcdata` CLI in the VSIX (`out/mcdata.bundled.cjs`). When no override is configured, the `mcdata` command is resolved in order: optional `sfmcData.mcdataPath` → workspace `node_modules/.bin/mcdata` → `mcdata` on the integrated terminal `PATH` → bundled `node …/out/mcdata.bundled.cjs` (Node.js must remain on `PATH` in that terminal).
 
 ## [0.4.0] — 2026-04-08
 
