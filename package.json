@@ -4,7 +4,7 @@
     "description": "Export and import Marketing Cloud Data Extension rows via the mcdata CLI (sfmc-dataloader).",
     "author": "Jörn Berkefeld",
     "license": "MIT",
-    "version": "0.8.0",
+    "version": "0.8.1",
     "repository": {
         "type": "git",
         "url": "https://github.com/JoernBerkefeld/vscode-sfmc-dataloader.git"
