@@ -1,94 +1,44 @@
 # Changelog
 
-All notable changes to this extension will be documented in this file.
-The format is based on [Keep a Changelog](https://keepachangelog.com/).
+All notable changes to the SFMC Data Loader VS Code extension will be documented in this file.
 
-## [0.8.0] — 2026-04-10
+The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-### Added
-
-- **SFMC Data Loader** submenu on **editor tab** right-click (`editor/title/context`) and **editor** context menu (`editor/context`), with the same file patterns as Explorer.
-- **`mcdata` execution** via subprocess: stream **stdout/stderr** to the **SFMC Data Loader** output channel, **cancellable** progress notification while running, then non-modal success / error / cancel toasts with a **More Details** action (opens the log), aligned with SFMC DevTools.
-
-### Changed
-
-- Export/import commands no longer open a dedicated integrated terminal for `mcdata`.
-
-### Dependencies
-
-- Bump `eslint-plugin-jsdoc` to ^62.x (peer-compatible with ESLint 10; restores clean `npm ci`).
-
-## [0.7.0] — 2026-04-09
-
-### Added
-
-- Settings **`sfmcData.mcdataSource`** (`bundled` | `auto` | `custom`) and clearer **`sfmcData.mcdataPath`** (used only when source is `custom`).
-- **`sfmcData.promptImportMode`** — optional QuickPick for upsert vs insert after import inputs, before the optional clear-before-import prompt.
-- **`sfmcData.importMode`** — default row write mode when not prompting (replaces `sfmcData.defaultMode`).
-
-### Changed
-
-- **mcdata resolution:** default is **`bundled`** only (minified `out/mcdata.bundled.cjs`). Use **`sfmcData.mcdataSource`: `auto`** for the previous discovery order (workspace `node_modules/.bin/mcdata` → `PATH` → bundled) without a custom path. A non-empty **`sfmcData.mcdataPath` alone no longer selects that binary** — set **`mcdataSource` to `custom`**.
-- **`sfmcData.defaultMode`** is deprecated in favor of **`sfmcData.importMode`**; the old key is still read when `importMode` is unset at every configuration scope.
-- Packaged VSIX includes a minified `out/mcdata.bundled.cjs` CLI fallback instead of shipping full `node_modules` (smaller extension download). `sfmc-dataloader` is a devDependency used only at build time to produce that bundle.
+## [0.8.1] — 2026-04-10
 
 ### Fixed
 
-- Bundled `mcdata --version` prints the dataloader semver (banner inject + `sfmc-dataloader` ≥ 2.0.2).
-
-### Dependencies
-
-- Bump `sfmc-dataloader` to 2.0.2.
-
-## [0.6.1] — 2026-04-09
-
-### Fixed
-
-- Regenerated `package-lock.json` so it matches `sfmc-dataloader@^2.0.0` (resolves CI `npm ci` / lockfile sync failure for v0.6.0).
-
-## [0.6.0] — 2026-04-09
-
-### Added
-
-- Settings `sfmcData.useGitFilenames` (append `--git` to every `mcdata` spawn) and `sfmcData.promptClearBeforeImport` (optional two-step prompt for `--clear-before-import` + `--i-accept-clear-data-risk`).
-- What's New webview: Markdown links `[label](https://...)` render as external links (`openExternal`).
+- Fixed imports failing with TSV files that have UTF-8 BOM or quoted fields
 
 ### Changed
 
-- Requires `sfmc-dataloader` **v2** (breaking CLI: `.mcdata.` export filenames, async-only insert/upsert, `--git`). Explorer context menu matches `data/` files whose names contain `.mcdata.`.
-- Removed `sfmcData.importApi`; imports always use the async bulk REST API. `sfmcData.defaultMode` is `upsert` or `insert` only.
-
-## [0.5.0] — 2026-04-08
-
-### Changed
-
-- The extension bundles a minified `mcdata` CLI in the VSIX (`out/mcdata.bundled.cjs`). When no override is configured, the `mcdata` command is resolved in order: optional `sfmcData.mcdataPath` → workspace `node_modules/.bin/mcdata` → `mcdata` on the integrated terminal `PATH` → bundled `node …/out/mcdata.bundled.cjs` (Node.js must remain on `PATH` in that terminal).
-
-## [0.4.0] — 2026-04-08
-
-### Added
-
-- **What's New**: after an update, a notification offers to open release notes in a webview, parsed from this changelog for the current version. Use command **SFMC Data: Show What's New** anytime.
-
-## [0.3.0] — 2026-04-08
-
-### Added
-
-- **Explorer context menu** — right-click any `*.dataExtension-meta.json`, `*.dataExtension-doc.md` (under `retrieve/.../dataExtension/`), or export files whose names contain `.mcdata.` (under `data/.../`) to access an **SFMC Data Loader** submenu with four commands:
-  - **Export Data** — runs `mcdata export <cred/bu> --de <key>...` for the selected file(s)
-  - **Export from BUs...** — opens a multi-select BU picker (pre-selects the current file's BU) and runs `mcdata export --from ...` across the chosen BUs
-  - **Import Data** — for `retrieve/` files: `mcdata import <cred/bu> --de <key>...`; for `data/` files: `mcdata import <cred/bu> --file <path>...`
-  - **Import to BU...** — opens a multi-select BU picker for target BUs; for `retrieve/` files: `mcdata import --from <src> --to <tgt>... --de <key>...`; for `data/` files: `mcdata import --to <tgt>... --file <path>...` (new file-to-multi-BU mode in `sfmc-dataloader` ≥ 1.2.0)
-- Multi-select support: select multiple DE files within the same BU and all commands operate on all of them at once
+- Import file format is now auto-detected from file extension (`.csv`, `.tsv`, `.json`)
+- TSV exports no longer wrap fields in quotes (standard TSV behavior)
 
 ### Dependencies
 
-- Requires `sfmc-dataloader` ≥ 1.2.0 for the **Import to BU...** command on `data/` export files
+- Bump sfmc-dataloader from 2.0.2 to 2.1.0
 
-## [0.1.0] — 2026-04-07
+## [0.8.0] — 2026-04-09
 
 ### Added
 
-- `SFMC Data: Export DE Data` command — QuickPick credential/BU/DE-key workflow spawning `mcdata export`
-- `SFMC Data: Import DE Data` command — QuickPick credential/BU workflow supporting both by-key and by-file import via `mcdata import`
-- Settings: `sfmcData.mcdataPath`, `sfmcData.importApi`, `sfmcData.defaultMode`, `sfmcData.defaultFormat`
+- Output channel for mcdata command output
+- Progress indicator during export/import operations
+- Editor context menu commands for data files
+
+### Changed
+
+- Improved UI feedback during operations
+
+## [0.7.0] — 2026-04-08
+
+### Added
+
+- `sfmcData.mcdataSource` setting to control CLI resolution
+- `sfmcData.importMode` setting (replaces deprecated `defaultMode`)
+- `sfmcData.promptImportMode` setting for interactive mode selection
+
+### Deprecated
+
+- `sfmcData.defaultMode` — use `sfmcData.importMode` instead
