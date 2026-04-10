@@ -7,10 +7,10 @@
     "version": "0.8.0",
     "repository": {
         "type": "git",
-        "url": "https://github.com/JoernBerkefeld/vscode-sfmc-data.git"
+        "url": "https://github.com/JoernBerkefeld/vscode-sfmc-dataloader.git"
     },
     "bugs": {
-        "url": "https://github.com/JoernBerkefeld/vscode-sfmc-data/issues"
+        "url": "https://github.com/JoernBerkefeld/vscode-sfmc-dataloader/issues"
     },
     "publisher": "joernberkefeld",
     "categories": [
