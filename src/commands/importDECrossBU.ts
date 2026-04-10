@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { findMcdevProjectRoot, readMcdevrc } from '../config';
 import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
-import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
+import { runMcdataWithProgress } from '../runMcdata';
 import { buildCrossBuImportArgs } from '../argbuilder';
 import { promptOptionalClearBeforeImport } from '../importClearPrompts';
 import { resolveImportWriteMode } from '../importMode';
@@ -110,8 +110,6 @@ async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> 
 
     const clearChoice = await promptOptionalClearBeforeImport();
 
-    const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
-    if (prefix === undefined) return;
     const args = buildCrossBuImportArgs({
         fromCredBu: `${srcCredential}/${srcBU}`,
         toCredBus: selectedTargetBUs.map(({ label }) => `${tgtCredential}/${label}`),
@@ -122,5 +120,7 @@ async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> 
         acceptClearRisk: clearChoice.acceptClearRisk,
         useGit,
     });
-    spawnMcdataInTerminal(projectRoot, prefix, args);
+    await runMcdataWithProgress(context, projectRoot, args, {
+        progressTitle: 'SFMC Data — Import (Cross-BU)',
+    });
 }

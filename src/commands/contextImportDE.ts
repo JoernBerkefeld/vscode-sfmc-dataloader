@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { findMcdevProjectRoot } from '../config';
-import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
+import { runMcdataWithProgress } from '../runMcdata';
 import { buildImportArgs } from '../argbuilder';
 import { resolveContextFiles } from './contextUtils';
 import { promptOptionalClearBeforeImport } from '../importClearPrompts';
@@ -41,9 +41,6 @@ async function contextImportDE(
 
     const clearChoice = await promptOptionalClearBeforeImport();
 
-    const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
-    if (prefix === undefined) return;
-
     if (parsed[0].type === 'data') {
         const filePaths = parsed.map((f) => f.filePath);
         const args = buildImportArgs(
@@ -57,7 +54,9 @@ async function contextImportDE(
             },
             useGit
         );
-        spawnMcdataInTerminal(projectRoot, prefix, args);
+        await runMcdataWithProgress(context, projectRoot, args, {
+            progressTitle: 'SFMC Data — Import',
+        });
     } else {
         const deKeys = parsed.map((f) => f.deKey);
         const args = buildImportArgs(
@@ -71,6 +70,8 @@ async function contextImportDE(
             },
             useGit
         );
-        spawnMcdataInTerminal(projectRoot, prefix, args);
+        await runMcdataWithProgress(context, projectRoot, args, {
+            progressTitle: 'SFMC Data — Import',
+        });
     }
 }

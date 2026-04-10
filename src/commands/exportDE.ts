@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { findMcdevProjectRoot, readMcdevrc } from '../config';
 import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
-import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
+import { runMcdataWithProgress } from '../runMcdata';
 import { buildExportArgs } from '../argbuilder';
 
 export function registerExportCommand(context: vscode.ExtensionContext): void {
@@ -76,8 +76,8 @@ async function exportDE(context: vscode.ExtensionContext): Promise<void> {
     const format = cfg.get<string>('defaultFormat') ?? 'csv';
     const useGit = cfg.get<boolean>('useGitFilenames') === true;
 
-    const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
-    if (prefix === undefined) return;
     const args = buildExportArgs(`${credential}/${bu}`, deKeys, format, useGit);
-    spawnMcdataInTerminal(projectRoot, prefix, args);
+    await runMcdataWithProgress(context, projectRoot, args, {
+        progressTitle: 'SFMC Data — Export',
+    });
 }

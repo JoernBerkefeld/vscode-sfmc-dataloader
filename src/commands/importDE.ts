@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { findMcdevProjectRoot, readMcdevrc } from '../config';
 import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
-import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
+import { runMcdataWithProgress } from '../runMcdata';
 import { buildImportArgs } from '../argbuilder';
 import { promptOptionalClearBeforeImport } from '../importClearPrompts';
 import { resolveImportWriteMode } from '../importMode';
@@ -120,8 +120,6 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
 
     const clearChoice = await promptOptionalClearBeforeImport();
 
-    const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
-    if (prefix === undefined) return;
     const credBu = `${credential}/${bu}`;
 
     if (deKeys) {
@@ -136,7 +134,9 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
             },
             useGit
         );
-        spawnMcdataInTerminal(projectRoot, prefix, args);
+        await runMcdataWithProgress(context, projectRoot, args, {
+            progressTitle: 'SFMC Data — Import',
+        });
     } else if (filePaths) {
         const args = buildImportArgs(
             credBu,
@@ -149,6 +149,8 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
             },
             useGit
         );
-        spawnMcdataInTerminal(projectRoot, prefix, args);
+        await runMcdataWithProgress(context, projectRoot, args, {
+            progressTitle: 'SFMC Data — Import',
+        });
     }
 }

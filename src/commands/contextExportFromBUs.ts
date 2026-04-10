@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { findMcdevProjectRoot, readMcdevrc } from '../config';
 import { getAllCredBus } from '../mcdevrcParser';
-import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
+import { runMcdataWithProgress } from '../runMcdata';
 import { buildMultiBuExportArgs } from '../argbuilder';
 import { resolveContextFiles } from './contextUtils';
 
@@ -58,8 +58,8 @@ async function contextExportFromBUs(
     const format = cfg.get<string>('defaultFormat') ?? 'csv';
     const useGit = cfg.get<boolean>('useGitFilenames') === true;
 
-    const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
-    if (prefix === undefined) return;
     const args = buildMultiBuExportArgs({ fromCredBus, deKeys, format, useGit });
-    spawnMcdataInTerminal(projectRoot, prefix, args);
+    await runMcdataWithProgress(context, projectRoot, args, {
+        progressTitle: 'SFMC Data — Export from BUs',
+    });
 }

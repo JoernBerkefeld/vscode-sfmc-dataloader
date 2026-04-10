@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { findMcdevProjectRoot } from '../config';
-import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
+import { runMcdataWithProgress } from '../runMcdata';
 import { buildExportArgs } from '../argbuilder';
 import { resolveContextFiles } from './contextUtils';
 
@@ -35,8 +35,8 @@ async function contextExportDE(
     const useGit = cfg.get<boolean>('useGitFilenames') === true;
     const deKeys = parsed.map((f) => f.deKey);
 
-    const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
-    if (prefix === undefined) return;
     const args = buildExportArgs(credBu, deKeys, format, useGit);
-    spawnMcdataInTerminal(projectRoot, prefix, args);
+    await runMcdataWithProgress(context, projectRoot, args, {
+        progressTitle: 'SFMC Data — Export',
+    });
 }

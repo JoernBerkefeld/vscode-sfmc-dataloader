@@ -8,10 +8,13 @@ import { registerContextExportCommand } from './commands/contextExportDE';
 import { registerContextImportCommand } from './commands/contextImportDE';
 import { registerContextImportToBUCommand } from './commands/contextImportToBU';
 import { registerContextExportFromBUsCommand } from './commands/contextExportFromBUs';
+import { registerSfmcDataOutput } from './sfmcDataOutput';
 
 const EXTENSION_DISPLAY_NAME = 'SFMC Data Loader';
 
 export function activate(context: vscode.ExtensionContext): void {
+    registerSfmcDataOutput(context);
+
     context.subscriptions.push(
         vscode.commands.registerCommand('sfmc-data.showWhatsNew', () =>
             showWhatsNewPanel(context, EXTENSION_DISPLAY_NAME)

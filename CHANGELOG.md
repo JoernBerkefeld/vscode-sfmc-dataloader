@@ -3,6 +3,21 @@
 All notable changes to this extension will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.8.0] — 2026-04-10
+
+### Added
+
+- **SFMC Data Loader** submenu on **editor tab** right-click (`editor/title/context`) and **editor** context menu (`editor/context`), with the same file patterns as Explorer.
+- **`mcdata` execution** via subprocess: stream **stdout/stderr** to the **SFMC Data Loader** output channel, **cancellable** progress notification while running, then non-modal success / error / cancel toasts with a **More Details** action (opens the log), aligned with SFMC DevTools.
+
+### Changed
+
+- Export/import commands no longer open a dedicated integrated terminal for `mcdata`.
+
+### Dependencies
+
+- Bump `eslint-plugin-jsdoc` to ^62.x (peer-compatible with ESLint 10; restores clean `npm ci`).
+
 ## [0.7.0] — 2026-04-09
 
 ### Added

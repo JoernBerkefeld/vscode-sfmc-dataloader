@@ -64,7 +64,7 @@ export function bundledMcdataScriptPath(extensionPath: string): string {
     return path.join(extensionPath, 'out', 'mcdata.bundled.cjs');
 }
 
-/** How the extension resolves the `mcdata` executable for the integrated terminal. */
+/** How the extension resolves the `mcdata` executable when spawning the CLI. */
 export type McdataSource = 'bundled' | 'auto' | 'custom';
 
 const VALID_MCDATA_SOURCES: readonly McdataSource[] = ['bundled', 'auto', 'custom'];

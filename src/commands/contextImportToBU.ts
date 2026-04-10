@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { findMcdevProjectRoot, readMcdevrc } from '../config';
 import { getAllCredBus } from '../mcdevrcParser';
-import { resolveMcdataShellPrefixForTerminal, spawnMcdataInTerminal } from '../terminal';
+import { runMcdataWithProgress } from '../runMcdata';
 import { buildCrossBuImportArgs, buildFileToMultiBuImportArgs } from '../argbuilder';
 import { resolveContextFiles } from './contextUtils';
 import { promptOptionalClearBeforeImport } from '../importClearPrompts';
@@ -64,9 +64,6 @@ async function contextImportToBU(
 
     const clearChoice = await promptOptionalClearBeforeImport();
 
-    const prefix = resolveMcdataShellPrefixForTerminal(context, projectRoot);
-    if (prefix === undefined) return;
-
     if (parsed[0].type === 'data') {
         const filePaths = parsed.map((f) => f.filePath);
         const args = buildFileToMultiBuImportArgs({
@@ -78,7 +75,9 @@ async function contextImportToBU(
             acceptClearRisk: clearChoice.acceptClearRisk,
             useGit,
         });
-        spawnMcdataInTerminal(projectRoot, prefix, args);
+        await runMcdataWithProgress(context, projectRoot, args, {
+            progressTitle: 'SFMC Data — Import to BU',
+        });
     } else {
         const deKeys = parsed.map((f) => f.deKey);
         const args = buildCrossBuImportArgs({
@@ -91,6 +90,8 @@ async function contextImportToBU(
             acceptClearRisk: clearChoice.acceptClearRisk,
             useGit,
         });
-        spawnMcdataInTerminal(projectRoot, prefix, args);
+        await runMcdataWithProgress(context, projectRoot, args, {
+            progressTitle: 'SFMC Data — Import to BU',
+        });
     }
 }

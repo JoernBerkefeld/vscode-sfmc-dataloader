@@ -17,6 +17,7 @@
         "src/importClearPrompts.ts",
         "src/mcdevrcParser.ts",
         "src/mcdataResolve.ts",
+        "src/mcdataShellCommand.ts",
         "src/sfmc-dataloader.d.ts",
         "src/whatsNewCore.ts",
         "src/test"

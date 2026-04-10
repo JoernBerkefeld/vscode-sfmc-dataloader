@@ -5,10 +5,10 @@ A lightweight VS Code extension that surfaces the [`sfmc-dataloader`](https://ww
 ## Requirements
 
 - An mcdev project initialised with [`mcdev`](https://www.npmjs.com/package/mcdev) (`.mcdevrc.json` + `.mcdev-auth.json` in the workspace root)
-- [`Node.js`](https://nodejs.org/) on your **integrated terminal** `PATH` (the extension runs `mcdata` or `node …/out/mcdata.bundled.cjs` for the built-in fallback).
-- **Optional:** your own [`sfmc-dataloader`](https://www.npmjs.com/package/sfmc-dataloader) install if you want a specific version. The extension **bundles** a compatible `sfmc-dataloader`. Use **`sfmcData.mcdataSource`** to choose how the integrated terminal resolves `mcdata`:
+- [`Node.js`](https://nodejs.org/) on the **process `PATH`** when using the bundled CLI (`node …/out/mcdata.bundled.cjs`) or when `sfmcData.mcdataSource` is `auto` and `mcdata` is resolved from the environment.
+- **Optional:** your own [`sfmc-dataloader`](https://www.npmjs.com/package/sfmc-dataloader) install if you want a specific version. The extension **bundles** a compatible `sfmc-dataloader`. Use **`sfmcData.mcdataSource`** to choose how the extension resolves `mcdata`:
   - **`bundled`** (default) — only the minified CLI shipped with the extension (`node …/out/mcdata.bundled.cjs`).
-  - **`auto`** — workspace `node_modules/.bin/mcdata` when present, then `mcdata` on the integrated terminal `PATH`, then the bundled CLI (same discovery order as older releases when no custom path was set).
+  - **`auto`** — workspace `node_modules/.bin/mcdata` when present, then `mcdata` on the process `PATH`, then the bundled CLI (same discovery order as older releases when no custom path was set).
   - **`custom`** — run the executable at **`sfmcData.mcdataPath`** (path is ignored for `bundled` and `auto`).
 
 ```bash
@@ -35,9 +35,9 @@ These commands open a guided QuickPick workflow:
 2. **Select Business Unit** (skipped when only one exists)
 3. **Enter DE key(s)** or **select file(s)**
 
-### Explorer Context Menu
+### Explorer, editor tab, and editor context menus
 
-Right-click any of the following files in the VS Code Explorer to access the **SFMC Data Loader** submenu:
+Right-click any of the following files in the **Explorer**, on an **editor tab**, or in the **editor** background menu to open the **SFMC Data Loader** submenu:
 
 - `*.dataExtension-meta.json` or `*.dataExtension-doc.md` under `retrieve/<cred>/<bu>/dataExtension/`
 - Export files under `data/<cred>/<bu>/` whose names contain `.mcdata.` (matches `mcdata` export naming)
@@ -51,7 +51,7 @@ You can **multi-select** files within the same BU and all commands will operate 
 | **Import Data** | `mcdata import <cred/bu> --de <key>...` (resolves latest export file) | `mcdata import <cred/bu> --file <path>...` |
 | **Import to BU...** | Multi-select target BUs, runs `mcdata import --from <src> --to <tgt>... --de <key>...` | Multi-select target BUs, runs `mcdata import --to <tgt>... --file <path>...` |
 
-The assembled `mcdata` command runs in a dedicated integrated terminal so you can see live output.
+While `mcdata` runs, the extension shows a **cancellable** notification. **Stdout/stderr** stream to the **SFMC Data Loader** output channel. When the run finishes, a short **success or error** toast appears; choose **More Details** to focus that log (same pattern as SFMC DevTools).
 
 ## Settings
 
@@ -68,9 +68,13 @@ All settings are under the **SFMC Data Loader** section in VS Code Settings.
 | `sfmcData.defaultMode` | — | **Deprecated** — use `sfmcData.importMode`. Still read when `importMode` is unset at every scope. |
 | `sfmcData.defaultFormat` | `csv` | Default file format for exports and imports: `csv`, `tsv`, or `json`. |
 
+### Settings UI after an extension update
+
+Contributed settings come from the extension `package.json` manifest. After the extension **updates**, use **Restart Extensions** when VS Code prompts, or **Developer: Reload Window**, so the Settings editor picks up **new or renamed** keys. If you dismiss the restart prompt, the UI can still show an older manifest until the extension host reloads.
+
 ## How it works
 
-The extension reads `.mcdevrc.json` to populate credential and BU quick-picks. It then constructs a `mcdata export` or `mcdata import` command and runs it in VS Code's integrated terminal with the mcdev project root as the working directory.
+The extension reads `.mcdevrc.json` to populate credential and BU quick-picks. It then constructs a `mcdata export` or `mcdata import` command and runs it as a **subprocess** with the mcdev project root as the working directory, logging to the **SFMC Data Loader** output channel.
 
 No SFMC API calls are made by the extension itself — all network activity goes through the `mcdata` CLI.
 
