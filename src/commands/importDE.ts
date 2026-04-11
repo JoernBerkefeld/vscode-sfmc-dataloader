@@ -5,6 +5,7 @@ import { runMcdataWithProgress } from '../runMcdata';
 import { buildImportArgs } from '../argbuilder';
 import { promptOptionalClearBeforeImport } from '../importClearPrompts';
 import { resolveImportWriteMode } from '../importMode';
+import { resolveBackupBeforeImport } from '../importBackupPrompt';
 
 export function registerImportCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
@@ -82,7 +83,6 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
     if (!importMethod) return;
 
     const cfg = vscode.workspace.getConfiguration('sfmcData');
-    const format = cfg.get<string>('defaultFormat') ?? 'csv';
     const useGit = cfg.get<boolean>('useGitFilenames') === true;
 
     let deKeys: string[] | undefined;
@@ -118,6 +118,9 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
     const mode = await resolveImportWriteMode(cfg);
     if (mode === undefined) return;
 
+    const backupBeforeImport = await resolveBackupBeforeImport(cfg);
+    if (backupBeforeImport === undefined) return;
+
     const clearChoice = await promptOptionalClearBeforeImport();
 
     const credBu = `${credential}/${bu}`;
@@ -127,8 +130,8 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
             credBu,
             {
                 deKeys,
-                format,
                 mode,
+                backupBeforeImport,
                 clearBeforeImport: clearChoice.clearBeforeImport,
                 acceptClearRisk: clearChoice.acceptClearRisk,
             },
@@ -142,8 +145,8 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
             credBu,
             {
                 filePaths,
-                format,
                 mode,
+                backupBeforeImport,
                 clearBeforeImport: clearChoice.clearBeforeImport,
                 acceptClearRisk: clearChoice.acceptClearRisk,
             },

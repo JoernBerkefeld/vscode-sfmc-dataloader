@@ -5,6 +5,7 @@ import { runMcdataWithProgress } from '../runMcdata';
 import { buildCrossBuImportArgs } from '../argbuilder';
 import { promptOptionalClearBeforeImport } from '../importClearPrompts';
 import { resolveImportWriteMode } from '../importMode';
+import { resolveBackupBeforeImport } from '../importBackupPrompt';
 
 export function registerImportCrossBUCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
@@ -102,11 +103,13 @@ async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> 
         .filter(Boolean);
 
     const cfg = vscode.workspace.getConfiguration('sfmcData');
-    const format = cfg.get<string>('defaultFormat') ?? 'csv';
     const useGit = cfg.get<boolean>('useGitFilenames') === true;
 
     const mode = await resolveImportWriteMode(cfg);
     if (mode === undefined) return;
+
+    const backupBeforeImport = await resolveBackupBeforeImport(cfg);
+    if (backupBeforeImport === undefined) return;
 
     const clearChoice = await promptOptionalClearBeforeImport();
 
@@ -114,8 +117,8 @@ async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> 
         fromCredBu: `${srcCredential}/${srcBU}`,
         toCredBus: selectedTargetBUs.map(({ label }) => `${tgtCredential}/${label}`),
         deKeys,
-        format,
         mode,
+        backupBeforeImport,
         clearBeforeImport: clearChoice.clearBeforeImport,
         acceptClearRisk: clearChoice.acceptClearRisk,
         useGit,

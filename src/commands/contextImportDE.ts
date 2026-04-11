@@ -5,6 +5,7 @@ import { buildImportArgs } from '../argbuilder';
 import { resolveContextFiles } from './contextUtils';
 import { promptOptionalClearBeforeImport } from '../importClearPrompts';
 import { resolveImportWriteMode } from '../importMode';
+import { resolveBackupBeforeImport } from '../importBackupPrompt';
 
 export function registerContextImportCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
@@ -33,11 +34,13 @@ async function contextImportDE(
     const { parsed, credBu } = files;
 
     const cfg = vscode.workspace.getConfiguration('sfmcData');
-    const format = cfg.get<string>('defaultFormat') ?? 'csv';
     const useGit = cfg.get<boolean>('useGitFilenames') === true;
 
     const mode = await resolveImportWriteMode(cfg);
     if (mode === undefined) return;
+
+    const backupBeforeImport = await resolveBackupBeforeImport(cfg);
+    if (backupBeforeImport === undefined) return;
 
     const clearChoice = await promptOptionalClearBeforeImport();
 
@@ -47,8 +50,8 @@ async function contextImportDE(
             credBu,
             {
                 filePaths,
-                format,
                 mode,
+                backupBeforeImport,
                 clearBeforeImport: clearChoice.clearBeforeImport,
                 acceptClearRisk: clearChoice.acceptClearRisk,
             },
@@ -63,8 +66,8 @@ async function contextImportDE(
             credBu,
             {
                 deKeys,
-                format,
                 mode,
+                backupBeforeImport,
                 clearBeforeImport: clearChoice.clearBeforeImport,
                 acceptClearRisk: clearChoice.acceptClearRisk,
             },

@@ -6,6 +6,7 @@ import { buildCrossBuImportArgs, buildFileToMultiBuImportArgs } from '../argbuil
 import { resolveContextFiles } from './contextUtils';
 import { promptOptionalClearBeforeImport } from '../importClearPrompts';
 import { resolveImportWriteMode } from '../importMode';
+import { resolveBackupBeforeImport } from '../importBackupPrompt';
 
 export function registerContextImportToBUCommand(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
@@ -56,11 +57,13 @@ async function contextImportToBU(
     const toCredBus = selectedTargets.map(({ label }) => label);
 
     const cfg = vscode.workspace.getConfiguration('sfmcData');
-    const format = cfg.get<string>('defaultFormat') ?? 'csv';
     const useGit = cfg.get<boolean>('useGitFilenames') === true;
 
     const mode = await resolveImportWriteMode(cfg);
     if (mode === undefined) return;
+
+    const backupBeforeImport = await resolveBackupBeforeImport(cfg);
+    if (backupBeforeImport === undefined) return;
 
     const clearChoice = await promptOptionalClearBeforeImport();
 
@@ -69,8 +72,8 @@ async function contextImportToBU(
         const args = buildFileToMultiBuImportArgs({
             filePaths,
             toCredBus,
-            format,
             mode,
+            backupBeforeImport,
             clearBeforeImport: clearChoice.clearBeforeImport,
             acceptClearRisk: clearChoice.acceptClearRisk,
             useGit,
@@ -84,8 +87,8 @@ async function contextImportToBU(
             fromCredBu: credBu,
             toCredBus,
             deKeys,
-            format,
             mode,
+            backupBeforeImport,
             clearBeforeImport: clearChoice.clearBeforeImport,
             acceptClearRisk: clearChoice.acceptClearRisk,
             useGit,

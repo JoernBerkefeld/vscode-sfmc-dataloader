@@ -6,10 +6,11 @@
 export type ImportOptions = {
     deKeys?: string[];
     filePaths?: string[];
-    format: string;
     mode: string;
     clearBeforeImport: boolean;
     acceptClearRisk: boolean;
+    /** true = pass --backup-before-import, false = pass --no-backup-before-import, undefined = omit flag */
+    backupBeforeImport?: boolean;
 };
 
 export type MultiBuExportOptions = {
@@ -26,11 +27,12 @@ export type FileToMultiBuImportOptions = {
     filePaths: string[];
     /** One or more target `<credential>/<businessUnit>` tokens — maps to repeated `--to` flags */
     toCredBus: string[];
-    format: string;
     mode: string;
     clearBeforeImport: boolean;
     acceptClearRisk: boolean;
     useGit?: boolean;
+    /** true = pass --backup-before-import, false = pass --no-backup-before-import, undefined = omit flag */
+    backupBeforeImport?: boolean;
 };
 
 export type CrossBuImportOptions = {
@@ -39,11 +41,12 @@ export type CrossBuImportOptions = {
     /** One or more target `<credential>/<businessUnit>` tokens — maps to repeated `--to` */
     toCredBus: string[];
     deKeys: string[];
-    format: string;
     mode: string;
     clearBeforeImport: boolean;
     acceptClearRisk: boolean;
     useGit?: boolean;
+    /** true = pass --backup-before-import, false = pass --no-backup-before-import, undefined = omit flag */
+    backupBeforeImport?: boolean;
 };
 
 /**
@@ -91,14 +94,32 @@ export function buildMultiBuExportArgs(options: MultiBuExportOptions): string[] 
 }
 
 /**
+ * Appends `--backup-before-import` or `--no-backup-before-import` when the value is
+ * explicitly `true` or `false`. When `undefined`, no flag is added (CLI falls back to
+ * its TTY-interactive default).
+ * @param args - argument array to mutate
+ * @param backupBeforeImport - true/false/undefined
+ * @returns {void}
+ */
+function pushBackupFlag(args: string[], backupBeforeImport: boolean | undefined): void {
+    if (backupBeforeImport === true) {
+        args.push('--backup-before-import');
+    } else if (backupBeforeImport === false) {
+        args.push('--no-backup-before-import');
+    }
+}
+
+/**
  * Builds the argument list for `mcdata import --to <tgt> [--to <tgt>] --file <path> [--file <path>] ...`.
  *
  * Used when the source data is already on disk (data/ export files).
  * No `--from` is emitted — the DE key is derived from each filename by the CLI.
+ * Import format is detected automatically by the CLI from each file's extension.
  * @param options - file-to-multi-BU import settings
  */
 export function buildFileToMultiBuImportArgs(options: FileToMultiBuImportOptions): string[] {
-    const args: string[] = ['import', '--format', options.format, '--mode', options.mode];
+    const args: string[] = ['import', '--mode', options.mode];
+    pushBackupFlag(args, options.backupBeforeImport);
     if (options.useGit) {
         args.push('--git');
     }
@@ -119,18 +140,12 @@ export function buildFileToMultiBuImportArgs(options: FileToMultiBuImportOptions
 
 /**
  * Builds the argument list for `mcdata import --from <src> --to <tgt> [--to <tgt>] ...`.
+ * Import format is detected automatically by the CLI from the source data.
  * @param options - cross-BU import settings
  */
 export function buildCrossBuImportArgs(options: CrossBuImportOptions): string[] {
-    const args: string[] = [
-        'import',
-        '--from',
-        options.fromCredBu,
-        '--format',
-        options.format,
-        '--mode',
-        options.mode,
-    ];
+    const args: string[] = ['import', '--from', options.fromCredBu, '--mode', options.mode];
+    pushBackupFlag(args, options.backupBeforeImport);
     if (options.useGit) {
         args.push('--git');
     }
@@ -154,6 +169,7 @@ export function buildCrossBuImportArgs(options: CrossBuImportOptions): string[] 
  *
  * Exactly one of `deKeys` or `filePaths` must be supplied (mirrors CLI mutual
  * exclusion between `--de` and `--file`).
+ * Import format is detected automatically by the CLI from the file extension.
  * @param credBu - `<credential>/<businessUnit>` token
  * @param options - import settings derived from VS Code settings and user input
  * @param useGit
@@ -163,7 +179,8 @@ export function buildImportArgs(
     options: ImportOptions,
     useGit?: boolean
 ): string[] {
-    const args: string[] = ['import', credBu, '--format', options.format, '--mode', options.mode];
+    const args: string[] = ['import', credBu, '--mode', options.mode];
+    pushBackupFlag(args, options.backupBeforeImport);
     if (useGit) {
         args.push('--git');
     }

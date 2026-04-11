@@ -1,6 +1,6 @@
 # SFMC Data Loader — VS Code Extension
 
-A lightweight VS Code extension that surfaces the [`sfmc-dataloader`](https://www.npmjs.com/package/sfmc-dataloader) CLI (`mcdata`) as Command Palette commands.
+A lightweight VS Code extension for **Salesforce Marketing Cloud Engagement** that surfaces the [`sfmc-dataloader`](https://www.npmjs.com/package/sfmc-dataloader) CLI (`mcdata`) as Command Palette commands.
 
 ## Requirements
 
@@ -66,7 +66,8 @@ All settings are under the **SFMC Data Loader** section in VS Code Settings.
 | `sfmcData.promptImportMode` | `false` | When `true`, prompts for upsert vs insert after you choose import inputs and before the optional clear-before-import step. |
 | `sfmcData.importMode` | `upsert` | Default row write mode for imports when not prompting: `upsert` or `insert`. Replaces deprecated `sfmcData.defaultMode`. |
 | `sfmcData.defaultMode` | — | **Deprecated** — use `sfmcData.importMode`. Still read when `importMode` is unset at every scope. |
-| `sfmcData.defaultFormat` | `csv` | Default file format for exports and imports: `csv`, `tsv`, or `json`. |
+| `sfmcData.defaultFormat` | `csv` | Default file format for exports: `csv`, `tsv`, or `json`. Import format is detected automatically from the file extension. |
+| `sfmcData.backupBeforeImport` | `prompt` | Whether to export a timestamped backup of each target DE before import: `prompt` (ask each time via QuickPick), `always` (backup without asking), or `never` (skip without asking). Backup filenames always include a timestamp. |
 
 ### Settings UI after an extension update
 

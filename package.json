@@ -1,7 +1,7 @@
 {
     "name": "sfmc-data",
     "displayName": "SFMC Data Loader",
-    "description": "Export and import Marketing Cloud Data Extension rows via the mcdata CLI (sfmc-dataloader).",
+    "description": "Export and import Salesforce Marketing Cloud Engagement Data Extension rows via the mcdata CLI (sfmc-dataloader).",
     "author": "Jörn Berkefeld",
     "license": "MIT",
     "version": "0.8.1",
@@ -57,7 +57,7 @@
         "eslint-plugin-unicorn": "^64.0.0",
         "globals": "^17.4.0",
         "prettier": "^3.8.1",
-        "sfmc-dataloader": "^2.1.0",
+        "sfmc-dataloader": "^2.2.0",
         "typescript": "^5.9.2",
         "typescript-eslint": "^8.57.2"
     },
@@ -269,7 +269,27 @@
                         "json"
                     ],
                     "default": "csv",
-                    "description": "Default file format for exports and imports."
+                    "description": "Default file format for exports. Import format is detected automatically from the file extension."
+                },
+                "sfmcData.backupBeforeImport": {
+                    "type": "string",
+                    "enum": [
+                        "prompt",
+                        "always",
+                        "never"
+                    ],
+                    "enumItemLabels": [
+                        "Always ask",
+                        "Always backup",
+                        "Never backup"
+                    ],
+                    "markdownEnumDescriptions": [
+                        "Before each import, show a QuickPick asking whether to export a timestamped backup of the current target DE rows (passes `--backup-before-import` or `--no-backup-before-import` based on your answer).",
+                        "Always export a timestamped backup of the target DE rows before import without asking (passes `--backup-before-import`).",
+                        "Never export a backup before import (passes `--no-backup-before-import`)."
+                    ],
+                    "default": "prompt",
+                    "description": "Whether to export a timestamped backup of each target Data Extension before import."
                 }
             }
         }
