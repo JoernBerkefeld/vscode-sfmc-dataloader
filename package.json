@@ -288,6 +288,7 @@
         "package": "npx @vscode/vsce package",
         "package:test": "npx @vscode/vsce package --pre-release -o sfmc-data-BETA.vsix",
         "lint": "eslint .",
+        "lint:fix": "eslint --fix .",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
         "test": "node --test out/test/**/*.test.js"
