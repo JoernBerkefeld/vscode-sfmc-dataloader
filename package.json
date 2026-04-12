@@ -57,7 +57,7 @@
         "eslint-plugin-unicorn": "^64.0.0",
         "globals": "^17.4.0",
         "prettier": "^3.8.1",
-        "sfmc-dataloader": "^2.2.0",
+        "sfmc-dataloader": "^2.3.0",
         "typescript": "^5.9.2",
         "typescript-eslint": "^8.57.2"
     },
@@ -245,21 +245,6 @@
                     ],
                     "default": "upsert",
                     "description": "Default row write mode for imports when not prompting (async REST bulk endpoints only)."
-                },
-                "sfmcData.defaultMode": {
-                    "type": "string",
-                    "enum": [
-                        "upsert",
-                        "insert"
-                    ],
-                    "enumDescriptions": [
-                        "Update if primary key exists, else insert (async bulk API)",
-                        "Insert new rows only (async bulk API)"
-                    ],
-                    "default": "upsert",
-                    "description": "Deprecated: use sfmcData.importMode. Kept for backward compatibility.",
-                    "markdownDeprecationMessage": "Replaced by `#sfmcData.importMode#`. This setting is read only when `importMode` is unset at every scope.",
-                    "deprecationMessage": "Replaced by sfmcData.importMode."
                 },
                 "sfmcData.defaultFormat": {
                     "type": "string",

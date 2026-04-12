@@ -4,6 +4,16 @@ All notable changes to the SFMC Data Loader VS Code extension will be documented
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.9.1] — 2026-04-12
+
+### Removed
+
+- `sfmcData.defaultMode` setting (was deprecated since 0.7.0 — use `sfmcData.importMode`)
+
+### Dependencies
+
+- Bump sfmc-dataloader from 2.2.0 to 2.3.0 (row count checks and clear-data skip logic for empty DEs)
+
 ## [0.9.0] — 2026-04-11
 
 ### Added
