@@ -4,7 +4,7 @@
     "description": "Export and import Salesforce Marketing Cloud Engagement Data Extension rows via the mcdata CLI (sfmc-dataloader).",
     "author": "Jörn Berkefeld",
     "license": "MIT",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "repository": {
         "type": "git",
         "url": "https://github.com/JoernBerkefeld/vscode-sfmc-dataloader.git"
