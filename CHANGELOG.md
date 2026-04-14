@@ -4,6 +4,16 @@ All notable changes to the SFMC Data Loader VS Code extension will be documented
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.10.1] — 2026-04-14
+
+### Removed
+
+- No longer installs other extensions automatically — removed `extensionPack` (install **SFMC Extension Pack** or **SFMC Extension Pack (Expanded)** from the Marketplace if you want Data Loader, DevTools, and Language Service together).
+
+### Dependencies
+
+- Bump sfmc-dataloader from 2.4.0 to 2.4.2 (header-only CSV/TSV export for empty Data Extensions; import now rejects empty/BOM-only/header-only files with a clear error)
+
 ## [0.10.0] — 2026-04-14
 
 ### Changed
