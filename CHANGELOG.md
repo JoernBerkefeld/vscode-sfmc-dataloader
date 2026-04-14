@@ -4,6 +4,18 @@ All notable changes to the SFMC Data Loader VS Code extension will be documented
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.10.0] — 2026-04-14
+
+### Changed
+
+- `sfmcData.promptClearBeforeImport` default changed from `false` to `true` — the "clear before import?" confirmation prompt is now on by default
+- `sfmcData.promptImportMode` default changed from `false` to `true` — the upsert vs insert prompt is now shown by default before each import
+- Import jobs now wait for the Marketing Cloud async API to confirm completion before reporting row counts. If the job fails, per-row error messages are printed in the output channel and an error notification appears instead of the success toast.
+
+### Dependencies
+
+- Bump sfmc-dataloader from 2.3.0 to 2.4.0 (async import status polling, per-row error reporting, exit code 1 on import error)
+
 ## [0.9.1] — 2026-04-12
 
 ### Removed

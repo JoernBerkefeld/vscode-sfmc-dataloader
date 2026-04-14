@@ -62,8 +62,8 @@ All settings are under the **SFMC Data Loader** section in VS Code Settings.
 | `sfmcData.mcdataSource` | `bundled` | How to resolve `mcdata`: `bundled` (extension CLI only), `auto` (workspace `.bin` → `PATH` → bundled), or `custom` (use `sfmcData.mcdataPath`). |
 | `sfmcData.mcdataPath` | `""` | Path to the `mcdata` executable — **only when `mcdataSource` is `custom`**. Ignored for `bundled` and `auto` (you may clear a stale path). |
 | `sfmcData.useGitFilenames` | `false` | When `true`, appends `--git` to every `mcdata` invocation so exports use stable `*.mcdata.<ext>` names without a timestamp. |
-| `sfmcData.promptClearBeforeImport` | `false` | When `true`, after you finish the import QuickPick flow, prompts whether to clear the target Data Extension before import (two-step confirmation; maps to `mcdata` clear-before-import flags). |
-| `sfmcData.promptImportMode` | `false` | When `true`, prompts for upsert vs insert after you choose import inputs and before the optional clear-before-import step. |
+| `sfmcData.promptClearBeforeImport` | `true` | When `true`, after you finish the import QuickPick flow, prompts whether to clear the target Data Extension before import (two-step confirmation; maps to `mcdata` clear-before-import flags). |
+| `sfmcData.promptImportMode` | `true` | When `true`, prompts for upsert vs insert after you choose import inputs and before the optional clear-before-import step. |
 | `sfmcData.importMode` | `upsert` | Default row write mode for imports when not prompting: `upsert` or `insert`. |
 | `sfmcData.defaultFormat` | `csv` | Default file format for exports: `csv`, `tsv`, or `json`. Import format is detected automatically from the file extension. |
 | `sfmcData.backupBeforeImport` | `prompt` | Whether to export a timestamped backup of each target DE before import: `prompt` (ask each time via QuickPick), `always` (backup without asking), or `never` (skip without asking). Backup filenames always include a timestamp. |

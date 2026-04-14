@@ -56,8 +56,9 @@
         "eslint-plugin-prettier": "^5.5.0",
         "eslint-plugin-unicorn": "^64.0.0",
         "globals": "^17.4.0",
+        "husky": "^9.1.7",
         "prettier": "^3.8.1",
-        "sfmc-dataloader": "^2.3.0",
+        "sfmc-dataloader": "^2.4.0",
         "typescript": "^5.9.2",
         "typescript-eslint": "^8.57.2"
     },
@@ -225,12 +226,12 @@
                 },
                 "sfmcData.promptClearBeforeImport": {
                     "type": "boolean",
-                    "default": false,
+                    "default": true,
                     "description": "After choosing import options, prompt whether to clear target DE rows before import (two-step confirmation)."
                 },
                 "sfmcData.promptImportMode": {
                     "type": "boolean",
-                    "default": false,
+                    "default": true,
                     "description": "When true, prompt for upsert vs insert before the optional clear-before-import step; when false, use import mode from settings only."
                 },
                 "sfmcData.importMode": {
@@ -289,6 +290,7 @@
         "package:test": "npx @vscode/vsce package --pre-release -o sfmc-data-BETA.vsix",
         "lint": "eslint .",
         "lint:fix": "eslint --fix .",
+        "prepare": "husky || true",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
         "test": "node --test out/test/**/*.test.js"
