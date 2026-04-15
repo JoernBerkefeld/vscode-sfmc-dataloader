@@ -8,6 +8,7 @@ import { registerContextExportCommand } from './commands/contextExportDE';
 import { registerContextImportCommand } from './commands/contextImportDE';
 import { registerContextImportToBUCommand } from './commands/contextImportToBU';
 import { registerContextExportFromBUsCommand } from './commands/contextExportFromBUs';
+import { registerInitProjectCommand } from './commands/initProject';
 import { registerSfmcDataOutput } from './sfmcDataOutput';
 
 const EXTENSION_DISPLAY_NAME = 'SFMC Data Loader';
@@ -22,6 +23,7 @@ export function activate(context: vscode.ExtensionContext): void {
     );
     void checkAndShowWhatsNew(context, EXTENSION_DISPLAY_NAME);
 
+    registerInitProjectCommand(context);
     registerExportCommand(context);
     registerImportCommand(context);
     registerExportMultiBUCommand(context);

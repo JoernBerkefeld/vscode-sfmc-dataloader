@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { findMcdevProjectRoot, readMcdevrc } from '../config';
+import { findProjectRoot, readProjectConfig } from '../config';
 import { getAllCredBus } from '../mcdevrcParser';
 import { runMcdataWithProgress } from '../runMcdata';
 import { buildCrossBuImportArgs, buildFileToMultiBuImportArgs } from '../argbuilder';
@@ -22,10 +22,10 @@ async function contextImportToBU(
     uri: vscode.Uri,
     uris: vscode.Uri[]
 ): Promise<void> {
-    const projectRoot = findMcdevProjectRoot(vscode.workspace.workspaceFolders);
+    const projectRoot = findProjectRoot(vscode.workspace.workspaceFolders);
     if (!projectRoot) {
         void vscode.window.showErrorMessage(
-            'No mcdev project found. Open a folder containing .mcdevrc.json.'
+            "No SFMC project config found. Use 'SFMC Data: Initialize Project' or open a folder containing .mcdevrc.json or .mcdatarc.json."
         );
         return;
     }
@@ -36,9 +36,9 @@ async function contextImportToBU(
 
     let mcdevrc;
     try {
-        mcdevrc = readMcdevrc(projectRoot);
+        mcdevrc = readProjectConfig(projectRoot);
     } catch (ex) {
-        void vscode.window.showErrorMessage(`Failed to read .mcdevrc.json: ${String(ex)}`);
+        void vscode.window.showErrorMessage(`Failed to read project config: ${String(ex)}`);
         return;
     }
 

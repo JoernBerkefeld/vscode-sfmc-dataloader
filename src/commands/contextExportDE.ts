@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { findMcdevProjectRoot } from '../config';
+import { findProjectRoot } from '../config';
 import { runMcdataWithProgress } from '../runMcdata';
 import { buildExportArgs } from '../argbuilder';
 import { resolveContextFiles } from './contextUtils';
@@ -18,10 +18,10 @@ async function contextExportDE(
     uri: vscode.Uri,
     uris: vscode.Uri[]
 ): Promise<void> {
-    const projectRoot = findMcdevProjectRoot(vscode.workspace.workspaceFolders);
+    const projectRoot = findProjectRoot(vscode.workspace.workspaceFolders);
     if (!projectRoot) {
         void vscode.window.showErrorMessage(
-            'No mcdev project found. Open a folder containing .mcdevrc.json.'
+            "No SFMC project config found. Use 'SFMC Data: Initialize Project' or open a folder containing .mcdevrc.json or .mcdatarc.json."
         );
         return;
     }

@@ -4,7 +4,7 @@ A lightweight VS Code extension for **Salesforce Marketing Cloud Engagement** th
 
 ## Requirements
 
-- An mcdev project initialised with [`mcdev`](https://www.npmjs.com/package/mcdev) (`.mcdevrc.json` + `.mcdev-auth.json` in the workspace root)
+- A project initialised with `mcdata init` (`.mcdatarc.json` + `.mcdata-auth.json`) **or** an existing [`mcdev`](https://www.npmjs.com/package/mcdev) project (`.mcdevrc.json` + `.mcdev-auth.json`) in the workspace root
 - [`Node.js`](https://nodejs.org/) on the **process `PATH`** when using the bundled CLI (`node …/out/mcdata.bundled.cjs`) or when `sfmcData.mcdataSource` is `auto` and `mcdata` is resolved from the environment.
 - **Optional:** your own [`sfmc-dataloader`](https://www.npmjs.com/package/sfmc-dataloader) install if you want a specific version. The extension **bundles** a compatible `sfmc-dataloader`. Use **`sfmcData.mcdataSource`** to choose how the extension resolves `mcdata`:
   - **`bundled`** (default) — only the minified CLI shipped with the extension (`node …/out/mcdata.bundled.cjs`).
@@ -24,6 +24,7 @@ npm install sfmc-dataloader
 
 | Command | Description |
 |---|---|
+| `SFMC Data: Initialize Project` | Create `.mcdatarc.json` + `.mcdata-auth.json` (standalone setup, no mcdev needed) |
 | `SFMC Data: Export DE Data` | Export one or more Data Extension rows to CSV/TSV/JSON |
 | `SFMC Data: Export DE Data (Multi-BU)` | Export from several BUs in one command |
 | `SFMC Data: Import DE Data` | Import rows from a file or by DE key |
@@ -74,7 +75,7 @@ Contributed settings come from the extension `package.json` manifest. After the 
 
 ## How it works
 
-The extension reads `.mcdevrc.json` to populate credential and BU quick-picks. It then constructs a `mcdata export` or `mcdata import` command and runs it as a **subprocess** with the mcdev project root as the working directory, logging to the **SFMC Data Loader** output channel.
+The extension reads `.mcdevrc.json` (mcdev projects) or `.mcdatarc.json` (standalone mcdata projects) to populate credential and BU quick-picks. It then constructs a `mcdata export`, `mcdata import`, or `mcdata init` command and runs it as a **subprocess** with the project root as the working directory, logging to the **SFMC Data Loader** output channel.
 
 No SFMC API calls are made by the extension itself — all network activity goes through the `mcdata` CLI.
 

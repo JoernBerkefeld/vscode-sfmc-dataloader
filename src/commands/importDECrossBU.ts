@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { findMcdevProjectRoot, readMcdevrc } from '../config';
+import { findProjectRoot, readProjectConfig } from '../config';
 import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
 import { runMcdataWithProgress } from '../runMcdata';
 import { buildCrossBuImportArgs } from '../argbuilder';
@@ -14,25 +14,25 @@ export function registerImportCrossBUCommand(context: vscode.ExtensionContext): 
 }
 
 async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> {
-    const projectRoot = findMcdevProjectRoot(vscode.workspace.workspaceFolders);
+    const projectRoot = findProjectRoot(vscode.workspace.workspaceFolders);
     if (!projectRoot) {
         void vscode.window.showErrorMessage(
-            'No mcdev project found. Open a folder containing .mcdevrc.json.'
+            "No SFMC project config found. Use 'SFMC Data: Initialize Project' or open a folder containing .mcdevrc.json or .mcdatarc.json."
         );
         return;
     }
 
     let mcdevrc;
     try {
-        mcdevrc = readMcdevrc(projectRoot);
+        mcdevrc = readProjectConfig(projectRoot);
     } catch (ex) {
-        void vscode.window.showErrorMessage(`Failed to read .mcdevrc.json: ${String(ex)}`);
+        void vscode.window.showErrorMessage(`Failed to read project config: ${String(ex)}`);
         return;
     }
 
     const credentials = getCredentials(mcdevrc);
     if (credentials.length === 0) {
-        void vscode.window.showErrorMessage('No credentials found in .mcdevrc.json.');
+        void vscode.window.showErrorMessage('No credentials found in project config.');
         return;
     }
 
@@ -93,6 +93,7 @@ async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> 
         title: 'SFMC Data — Import (Cross-BU) — DE key(s)',
         prompt: 'Enter one or more DE customer keys (comma-separated)',
         placeHolder: 'My_DE_Key, Another_DE_Key',
+        ignoreFocusOut: true,
         validateInput: (v) => (v.trim() ? undefined : 'At least one DE key is required'),
     });
     if (!deInput?.trim()) return;

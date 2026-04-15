@@ -1,93 +1,25 @@
 # Changelog
 
-All notable changes to the SFMC Data Loader VS Code extension will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
-
-## [0.10.1] — 2026-04-14
-
-### Removed
-
-- No longer installs other extensions automatically — removed `extensionPack` (install **SFMC Extension Pack** or **SFMC Extension Pack (Expanded)** from the Marketplace if you want Data Loader, DevTools, and Language Service together).
-
-### Dependencies
-
-- Bump sfmc-dataloader from 2.4.0 to 2.4.2 (header-only CSV/TSV export for empty Data Extensions; import now rejects empty/BOM-only/header-only files with a clear error)
-
-## [0.10.0] — 2026-04-14
-
-### Changed
-
-- `sfmcData.promptClearBeforeImport` default changed from `false` to `true` — the "clear before import?" confirmation prompt is now on by default
-- `sfmcData.promptImportMode` default changed from `false` to `true` — the upsert vs insert prompt is now shown by default before each import
-- Import jobs now wait for the Marketing Cloud async API to confirm completion before reporting row counts. If the job fails, per-row error messages are printed in the output channel and an error notification appears instead of the success toast.
-
-### Dependencies
-
-- Bump sfmc-dataloader from 2.3.0 to 2.4.0 (async import status polling, per-row error reporting, exit code 1 on import error)
-
-## [0.9.1] — 2026-04-12
-
-### Removed
-
-- `sfmcData.defaultMode` setting (was deprecated since 0.7.0 — use `sfmcData.importMode`)
-
-### Dependencies
-
-- Bump sfmc-dataloader from 2.2.0 to 2.3.0 (row count checks and clear-data skip logic for empty DEs)
-
-## [0.9.0] — 2026-04-11
+## [1.0.0] — 2026-04-15
 
 ### Added
 
-- New `sfmcData.backupBeforeImport` setting: `prompt` (QuickPick before each import), `always` (backup without asking), or `never` (skip without asking)
-- All four import commands show a QuickPick asking whether to export a timestamped backup when the setting is `prompt`
-- Backup passes `--backup-before-import` or `--no-backup-before-import` to the CLI automatically
+- **SFMC Data: Initialize Project** — Command Palette wizard that interactively runs `mcdata init`, creating `.mcdatarc.json` and `.mcdata-auth.json` for standalone use (no mcdev required).
+- **mcdev project guard** — when both `.mcdevrc.json` and `.mcdev-auth.json` are present, the Initialize Project command now shows an error message directing users to manage credentials via mcdev instead of overwriting them.
+- **mcdata overwrite confirmation** — when `.mcdatarc.json` or `.mcdata-auth.json` already exist, a modal warning asks the user to confirm before proceeding with initialization.
+- **`ignoreFocusOut` on all input prompts** — input boxes for DE keys and credential details now stay visible when VS Code loses focus, preventing accidental dismissal while copying keys from another window.
 
 ### Changed
 
-- `sfmcData.defaultFormat` now applies to **exports only**; import format is detected automatically from the file extension
-- Import commands no longer pass `--format` to the CLI
-
-### Dependencies
-
-- Bump sfmc-dataloader from 2.1.0 to 2.2.0
-
-## [0.8.1] — 2026-04-10
+- Project discovery and credential reads generalized: the extension now supports both `.mcdevrc.json`/`.mcdev-auth.json` (mcdev projects) and `.mcdatarc.json`/`.mcdata-auth.json` (standalone mcdata projects). The mcdev config pair takes precedence when both are present.
+- VSIX packaging uses `--no-dependencies` to prevent workspace `node_modules` from inflating the package (fixes local packaging producing multi-GB artifacts in monorepo setups).
 
 ### Fixed
 
-- Fixed imports failing with TSV files that have UTF-8 BOM or quoted fields
-
-### Changed
-
-- Import file format is now auto-detected from file extension (`.csv`, `.tsv`, `.json`)
-- TSV exports no longer wrap fields in quotes (standard TSV behavior)
+- Export and import log lines now show **absolute paths in double-quotes** (e.g. `"C:\data\MyOrg\DEV\Contact.mcdata.csv"`) making them CTRL+clickable in VS Code's integrated terminal.
+- Upsert on a Data Extension without a primary key (HTTP 400) now surfaces the human-readable SFMC `resultMessages` instead of a raw stack trace.
+- Error output no longer prints stack traces — only the human-readable error message is shown; exit code 1 is still set for CI.
 
 ### Dependencies
 
-- Bump sfmc-dataloader from 2.0.2 to 2.1.0
-
-## [0.8.0] — 2026-04-09
-
-### Added
-
-- Output channel for mcdata command output
-- Progress indicator during export/import operations
-- Editor context menu commands for data files
-
-### Changed
-
-- Improved UI feedback during operations
-
-## [0.7.0] — 2026-04-08
-
-### Added
-
-- `sfmcData.mcdataSource` setting to control CLI resolution
-- `sfmcData.importMode` setting (replaces deprecated `defaultMode`)
-- `sfmcData.promptImportMode` setting for interactive mode selection
-
-### Deprecated
-
-- `sfmcData.defaultMode` — use `sfmcData.importMode` instead
+- Bump bundled `sfmc-dataloader` from 2.4.2 to 2.5.0 (standalone `mcdata init`, guard checks, absolute path output, readable 400 errors, no-stack-trace error handling).
