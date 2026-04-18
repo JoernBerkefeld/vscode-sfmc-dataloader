@@ -45,9 +45,9 @@ export async function runMcdataWithProgress(
         },
         async (progress, token) => {
             progress.report({ message: 'Running mcdata…' });
-            outputChannel.appendLine(`$ ${commandLine}`);
+            outputChannel.appendLine(`⚡ mcdata ${args.join(' ')}`);
             outputChannel.appendLine('');
-            return executeMcdataShell(projectRoot, commandLine, outputChannel, token);
+            return executeMcdataShell(projectRoot, commandLine, outputChannel, token, progress);
         }
     );
 
@@ -100,11 +100,45 @@ export async function runMcdataWithProgress(
     }
 }
 
+const BATCH_PROGRESS = /Requesting batch (\d+) of (\d+)/;
+
+function createBatchProgressLineHandler(
+    progress: vscode.Progress<{ message?: string; increment?: number }>
+): (line: string) => void {
+    return (line: string) => {
+        const match = BATCH_PROGRESS.exec(line);
+        if (match) {
+            progress.report({ message: `Batch ${match[1]} of ${match[2]}` });
+        }
+    };
+}
+
+function appendStreamLine(
+    chunk: Buffer,
+    buffer: { value: string },
+    onLine: (line: string) => void
+): void {
+    buffer.value += chunk.toString();
+    const lines = buffer.value.split(/\r?\n/);
+    buffer.value = lines.pop() ?? '';
+    for (const line of lines) {
+        onLine(line);
+    }
+}
+
+function flushStreamBuffer(buffer: { value: string }, onLine: (line: string) => void): void {
+    if (buffer.value.length > 0) {
+        onLine(buffer.value);
+        buffer.value = '';
+    }
+}
+
 function executeMcdataShell(
     cwd: string,
     commandLine: string,
     channel: vscode.OutputChannel,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
+    progress: vscode.Progress<{ message?: string; increment?: number }>
 ): Promise<McdataRunOutcome> {
     return new Promise((resolve) => {
         const child = spawn(commandLine, {
@@ -127,11 +161,19 @@ function executeMcdataShell(
             resolve(outcome);
         };
 
+        const stdoutBuf = { value: '' };
+        const stderrBuf = { value: '' };
+        const reportBatchFromLine = createBatchProgressLineHandler(progress);
+
         child.stdout?.on('data', (chunk: Buffer) => {
-            channel.append(chunk.toString());
+            const text = chunk.toString();
+            channel.append(text);
+            appendStreamLine(chunk, stdoutBuf, reportBatchFromLine);
         });
         child.stderr?.on('data', (chunk: Buffer) => {
-            channel.append(chunk.toString());
+            const text = chunk.toString();
+            channel.append(text);
+            appendStreamLine(chunk, stderrBuf, reportBatchFromLine);
         });
 
         child.on('error', (err: Error) => {
@@ -140,7 +182,11 @@ function executeMcdataShell(
         });
 
         child.on('close', (code: number | null) => {
+            flushStreamBuffer(stdoutBuf, reportBatchFromLine);
+            flushStreamBuffer(stderrBuf, reportBatchFromLine);
             if (token.isCancellationRequested) {
+                channel.appendLine('');
+                channel.appendLine('Process cancelled by user.');
                 finish({ status: 'cancelled' });
                 return;
             }
