@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 /**
  * When `sfmcData.promptClearBeforeImport` is enabled, asks at the end of an
  * import flow whether to clear target DE rows (two-step: QuickPick + modal).
+ * @returns {Promise<{ clearBeforeImport: boolean; acceptClearRisk: boolean }>} flags for mcdata clear-before-import options
  */
 export async function promptOptionalClearBeforeImport(): Promise<{
     clearBeforeImport: boolean;

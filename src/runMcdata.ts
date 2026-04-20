@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import * as vscode from 'vscode';
+import { appendMcdataDebugArg } from './mcdataDebugArgs';
 import { resolveMcdataShellPrefix } from './mcdataPrefix';
 import { buildMcdataShellCommandLine } from './mcdataShellCommand';
 import { getSfmcDataOutputChannel } from './sfmcDataOutput';
@@ -17,11 +18,12 @@ export type McdataRunOutcome =
  * Runs `mcdata` in a subprocess (no integrated terminal), logs to the extension output channel,
  * shows a cancellable notification while running, then non-modal success/error toasts with optional
  * **More Details** (opens the output channel).
- * @param context
- * @param projectRoot
- * @param args
- * @param options
- * @param options.progressTitle
+ * @param context - VS Code extension context (mcdata resolution + output channel)
+ * @param projectRoot - absolute cwd for the mcdata subprocess
+ * @param args - argv after the executable (subcommand and flags; `--debug` may be appended from settings)
+ * @param options - notification UI options
+ * @param options.progressTitle - title shown on the cancellable progress notification
+ * @returns {Promise<void>}
  */
 export async function runMcdataWithProgress(
     context: vscode.ExtensionContext,
@@ -34,7 +36,11 @@ export async function runMcdataWithProgress(
         return;
     }
 
-    const commandLine = buildMcdataShellCommandLine(prefix, args);
+    const cfg = vscode.workspace.getConfiguration('sfmcData');
+    const createDebugLog = cfg.get<boolean>('createDebugLog') === true;
+    const finalArgs = appendMcdataDebugArg(args, createDebugLog);
+
+    const commandLine = buildMcdataShellCommandLine(prefix, finalArgs);
     const outputChannel = getSfmcDataOutputChannel();
 
     const outcome = await vscode.window.withProgress<McdataRunOutcome>(
@@ -45,7 +51,7 @@ export async function runMcdataWithProgress(
         },
         async (progress, token) => {
             progress.report({ message: 'Running mcdata…' });
-            outputChannel.appendLine(`⚡ mcdata ${args.join(' ')}`);
+            outputChannel.appendLine(`⚡ ${commandLine}`);
             outputChannel.appendLine('');
             return executeMcdataShell(projectRoot, commandLine, outputChannel, token, progress);
         }
@@ -100,15 +106,16 @@ export async function runMcdataWithProgress(
     }
 }
 
-const BATCH_PROGRESS = /Requesting batch (\d+) of (\d+)/;
+/** Matches export (stdout) and import (stderr) batch lines from mcdata. */
+const BATCH_PROGRESS = /\b((?:Downloading|Uploading) batch \d+ of \d+)\b/;
 
 function createBatchProgressLineHandler(
     progress: vscode.Progress<{ message?: string; increment?: number }>
 ): (line: string) => void {
     return (line: string) => {
-        const match = BATCH_PROGRESS.exec(line);
+        const match = line.match(BATCH_PROGRESS);
         if (match) {
-            progress.report({ message: `Batch ${match[1]} of ${match[2]}` });
+            progress.report({ message: match[1] });
         }
     };
 }

@@ -13,7 +13,8 @@ const plat = (deps?: McdataResolveDeps) => deps?.platform ?? process.platform;
 
 /**
  * Quote a single shell token if it contains whitespace or quotes.
- * @param token
+ * @param token - raw argv token
+ * @returns {string} same token, or double-quoted when needed
  */
 export function quoteShellToken(token: string): string {
     if (!/[ \t"]/.test(token)) {
@@ -71,7 +72,8 @@ const VALID_MCDATA_SOURCES: readonly McdataSource[] = ['bundled', 'auto', 'custo
 
 /**
  * Normalizes a configuration value to {@link McdataSource}. Unknown values default to `bundled`.
- * @param raw
+ * @param raw - value of `sfmcData.mcdataSource` (or undefined)
+ * @returns {McdataSource} normalized enum value
  */
 export function normalizeMcdataSource(raw?: string): McdataSource {
     if (raw && (VALID_MCDATA_SOURCES as readonly string[]).includes(raw)) {
@@ -99,12 +101,13 @@ function bundledPrefixOrError(
  * - **bundled** — only the minified CLI under the extension (`node …/out/mcdata.bundled.cjs`).
  * - **auto** — workspace `node_modules/.bin/mcdata` → `mcdata` on `PATH` → bundled script.
  * - **custom** — `customPath` after trim (quoted); empty path is an error.
- * @param options
- * @param options.mcdataSource
- * @param options.customPath
- * @param options.projectRoot
- * @param options.extensionPath
- * @param deps
+ * @param options - resolution inputs from `sfmcData` settings and extension paths
+ * @param options.mcdataSource - `bundled`, `auto`, or `custom`
+ * @param options.customPath - executable path when `mcdataSource` is `custom` (may be empty)
+ * @param options.projectRoot - workspace folder used to resolve `node_modules/.bin/mcdata`
+ * @param options.extensionPath - extension install dir (bundled `mcdata.bundled.cjs`)
+ * @param deps - optional overrides for `existsSync`, `execSync`, or `platform` (unit tests)
+ * @returns {{ prefix: string } | { error: string }} shell prefix or user-facing error message
  */
 export function buildMcdataShellPrefix(
     options: {

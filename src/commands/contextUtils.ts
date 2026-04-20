@@ -20,6 +20,7 @@ export type ResolvedContextFiles = {
  * @param uri   The right-clicked file URI (may be undefined if called from palette).
  * @param uris  All selected file URIs (populated by VS Code on multi-select).
  * @param projectRoot Absolute path to the mcdev project root.
+ * @returns {ResolvedContextFiles | undefined} parsed files and shared cred/BU, or undefined on validation failure
  */
 export function resolveContextFiles(
     uri: vscode.Uri | undefined,

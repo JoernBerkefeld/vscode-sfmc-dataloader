@@ -31,6 +31,7 @@ export type ParsedContextFile = {
  * - `data/<cred>/<bu>/<basename>` where basename matches `sfmc-dataloader` export naming (`.mcdata.`)
  * @param filePath   Absolute path of the selected file.
  * @param projectRoot Absolute path of the mcdev project root.
+ * @returns {ParsedContextFile | undefined} parsed components, or undefined if the path is not recognised
  */
 export function parseContextFilePath(
     filePath: string,

@@ -25,16 +25,16 @@ npm install sfmc-dataloader
 | Command | Description |
 |---|---|
 | `SFMC Data: Initialize Project` | Create `.mcdatarc.json` + `.mcdata-auth.json` (standalone setup, no mcdev needed) |
-| `SFMC Data: Export DE Data` | Export one or more Data Extension rows to CSV/TSV/JSON |
+| `SFMC Data: Refresh DE Cache` | Load Data Extension names and keys for one credential and selected BUs into a **session-only** cache (cleared when VS Code restarts) |
+| `SFMC Data: Export DE Data` | Export one or more Data Extension rows to CSV/TSV/JSON (manual DE keys or pick from a **session DE cache**) |
 | `SFMC Data: Export DE Data (Multi-BU)` | Export from several BUs in one command |
 | `SFMC Data: Import DE Data` | Import rows from a file or by DE key |
 | `SFMC Data: Import DE Data (Cross-BU)` | Import rows from one BU into multiple target BUs via the SFMC API |
 
 These commands open a guided QuickPick workflow:
 
-1. **Select credential** (skipped when only one exists)
-2. **Select Business Unit** (skipped when only one exists)
-3. **Enter DE key(s)** or **select file(s)**
+- **Export DE Data:** **Select credential** → **Business Unit** → **Enter DE keys manually** or **From DE list** (requires **Refresh DE cache** for that credential/BU first when using the list). Then format follows your settings.
+- **Import DE Data:** **Select credential** → **Business Unit** → **By DE key** (comma-separated keys) or **By file path** (one or more data files). Then mode, backup, and optional clear prompts as configured.
 
 ### Explorer, editor tab, and editor context menus
 
@@ -68,6 +68,7 @@ All settings are under the **SFMC Data Loader** section in VS Code Settings.
 | `sfmcData.importMode` | `upsert` | Default row write mode for imports when not prompting: `upsert` or `insert`. |
 | `sfmcData.defaultFormat` | `csv` | Default file format for exports: `csv`, `tsv`, or `json`. Import format is detected automatically from the file extension. |
 | `sfmcData.backupBeforeImport` | `prompt` | Whether to export a timestamped backup of each target DE before import: `prompt` (ask each time via QuickPick), `always` (backup without asking), or `never` (skip without asking). Backup filenames always include a timestamp. |
+| `sfmcData.createDebugLog` | `false` | When `true`, appends `--debug` to every `mcdata` subprocess so the CLI writes an API trace under `./logs/data/` (useful for [GitHub issues](https://github.com/JoernBerkefeld/vscode-sfmc-dataloader/issues)). Does not affect **Refresh DE cache** (in-process, not `mcdata`). |
 
 ### Settings UI after an extension update
 
@@ -77,7 +78,7 @@ Contributed settings come from the extension `package.json` manifest. After the 
 
 The extension reads `.mcdevrc.json` (mcdev projects) or `.mcdatarc.json` (standalone mcdata projects) to populate credential and BU quick-picks. It then constructs a `mcdata export`, `mcdata import`, or `mcdata init` command and runs it as a **subprocess** with the project root as the working directory, logging to the **SFMC Data Loader** output channel.
 
-No SFMC API calls are made by the extension itself — all network activity goes through the `mcdata` CLI.
+**DE cache (Refresh DE cache / Export from DE list):** the extension calls the `sfmc-dataloader` library in-process (`fetchDeList`) to retrieve Data Extension names and customer keys via the Marketing Cloud SOAP API. That path does **not** shell out to `mcdata`. All **import and export of row data** still goes through the `mcdata` CLI subprocess.
 
 ## Release Notes
 

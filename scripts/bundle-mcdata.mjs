@@ -21,6 +21,12 @@ await esbuild.build({
     format: 'cjs',
     minify: true,
     legalComments: 'none',
+    // Suppress the empty-import-meta warning: import.meta.url is only reached when
+    // globalThis.__sfmc_dataloader_version__ is absent (i.e. never in the bundle).
+    // Replacing it with the actual resolved path makes the dead code branch silent.
+    define: {
+        'import.meta.url': JSON.stringify(`file://${join(dlRoot, 'bin', 'mcdata.mjs').replaceAll('\\', '/')}`),
+    },
     banner: {
         js: `globalThis.__sfmc_dataloader_version__=${JSON.stringify(version)};`,
     },

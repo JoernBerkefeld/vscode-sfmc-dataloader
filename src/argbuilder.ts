@@ -54,7 +54,8 @@ export type CrossBuImportOptions = {
  * @param credBu - `<credential>/<businessUnit>` token
  * @param deKeys - one or more DE customer keys
  * @param format - csv | tsv | json
- * @param useGit
+ * @param useGit - when true, append `--git` for stable `*.mcdata.<ext>` filenames
+ * @returns {string[]} argv tokens for the mcdata subprocess
  */
 export function buildExportArgs(
     credBu: string,
@@ -75,6 +76,7 @@ export function buildExportArgs(
 /**
  * Builds the argument list for `mcdata export --from ... --from ... --de ...`.
  * @param options - multi-BU export settings
+ * @returns {string[]} argv tokens for the mcdata subprocess
  */
 export function buildMultiBuExportArgs(options: MultiBuExportOptions): string[] {
     const args: string[] = ['export', '--format', options.format];
@@ -116,6 +118,7 @@ function pushBackupFlag(args: string[], backupBeforeImport: boolean | undefined)
  * No `--from` is emitted — the DE key is derived from each filename by the CLI.
  * Import format is detected automatically by the CLI from each file's extension.
  * @param options - file-to-multi-BU import settings
+ * @returns {string[]} argv tokens for the mcdata subprocess
  */
 export function buildFileToMultiBuImportArgs(options: FileToMultiBuImportOptions): string[] {
     const args: string[] = ['import', '--mode', options.mode];
@@ -142,6 +145,7 @@ export function buildFileToMultiBuImportArgs(options: FileToMultiBuImportOptions
  * Builds the argument list for `mcdata import --from <src> --to <tgt> [--to <tgt>] ...`.
  * Import format is detected automatically by the CLI from the source data.
  * @param options - cross-BU import settings
+ * @returns {string[]} argv tokens for the mcdata subprocess
  */
 export function buildCrossBuImportArgs(options: CrossBuImportOptions): string[] {
     const args: string[] = ['import', '--from', options.fromCredBu, '--mode', options.mode];
@@ -172,7 +176,8 @@ export function buildCrossBuImportArgs(options: CrossBuImportOptions): string[] 
  * Import format is detected automatically by the CLI from the file extension.
  * @param credBu - `<credential>/<businessUnit>` token
  * @param options - import settings derived from VS Code settings and user input
- * @param useGit
+ * @param useGit - when true, append `--git` for stable `*.mcdata.<ext>` filenames
+ * @returns {string[]} argv tokens for the mcdata subprocess
  */
 export function buildImportArgs(
     credBu: string,

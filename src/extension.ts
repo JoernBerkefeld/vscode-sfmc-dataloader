@@ -9,12 +9,15 @@ import { registerContextImportCommand } from './commands/contextImportDE';
 import { registerContextImportToBUCommand } from './commands/contextImportToBU';
 import { registerContextExportFromBUsCommand } from './commands/contextExportFromBUs';
 import { registerInitProjectCommand } from './commands/initProject';
+import { registerRefreshDeCacheCommand } from './commands/refreshDeCache';
 import { registerSfmcDataOutput } from './sfmcDataOutput';
+import { registerMcdataStatusBar } from './statusBarMcdata';
 
 const EXTENSION_DISPLAY_NAME = 'SFMC Data Loader';
 
 export function activate(context: vscode.ExtensionContext): void {
     registerSfmcDataOutput(context);
+    registerMcdataStatusBar(context);
 
     context.subscriptions.push(
         vscode.commands.registerCommand('sfmc-data.showWhatsNew', () =>
@@ -24,6 +27,7 @@ export function activate(context: vscode.ExtensionContext): void {
     void checkAndShowWhatsNew(context, EXTENSION_DISPLAY_NAME);
 
     registerInitProjectCommand(context);
+    registerRefreshDeCacheCommand(context);
     registerExportCommand(context);
     registerImportCommand(context);
     registerExportMultiBUCommand(context);

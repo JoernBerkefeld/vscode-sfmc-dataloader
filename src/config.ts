@@ -10,7 +10,8 @@ const FILE_MCDATA_RC = '.mcdatarc.json';
  * Walks the open workspace folders and returns the first folder that contains
  * either `.mcdevrc.json` (checked first) or `.mcdatarc.json`.
  * Returns `undefined` when neither is found in any workspace folder.
- * @param workspaceFolders - VS Code workspace folders
+ * @param workspaceFolders - VS Code workspace folders (or undefined)
+ * @returns {string | undefined} absolute path to the project root folder, if found
  */
 export function findProjectRoot(
     workspaceFolders: readonly vscode.WorkspaceFolder[] | undefined
@@ -35,7 +36,8 @@ export function findProjectRoot(
  * Prefers `.mcdevrc.json` when present; falls back to `.mcdatarc.json`.
  * Both files share the same `credentials.<name>.businessUnits` shape.
  * @param projectRoot - absolute path to the project root
- * @throws if neither config file exists or contains invalid JSON
+ * @returns {Mcdevrc} parsed credential / business unit map
+ * @throws {Error} if neither config file exists or contains invalid JSON
  */
 export function readProjectConfig(projectRoot: string): Mcdevrc {
     const mcdevRcPath = path.join(projectRoot, FILE_MCDEV_RC);
@@ -47,7 +49,8 @@ export function readProjectConfig(projectRoot: string): Mcdevrc {
 }
 
 /**
- * @param workspaceFolders
+ * @param workspaceFolders - VS Code workspace folders (or undefined)
+ * @returns {string | undefined} absolute path to the project root folder, if found
  * @deprecated Use `findProjectRoot` instead — supports both `.mcdevrc.json` and `.mcdatarc.json`.
  */
 export function findMcdevProjectRoot(
@@ -57,7 +60,8 @@ export function findMcdevProjectRoot(
 }
 
 /**
- * @param projectRoot
+ * @param projectRoot - absolute path to the project root
+ * @returns {Mcdevrc} parsed credential / business unit map
  * @deprecated Use `readProjectConfig` instead — supports both `.mcdevrc.json` and `.mcdatarc.json`.
  */
 export function readMcdevrc(projectRoot: string): Mcdevrc {

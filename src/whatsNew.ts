@@ -138,8 +138,9 @@ export async function showWhatsNewPanel(
 
 /**
  * After an upgrade, prompt once; opening the panel or choosing Later records the version.
- * @param context
- * @param extensionDisplayName
+ * @param context - VS Code extension context (`globalState`, package version)
+ * @param extensionDisplayName - human-readable name for toast text (e.g. **SFMC Data Loader**)
+ * @returns {Promise<void>}
  */
 export async function checkAndShowWhatsNew(
     context: ExtensionContext,

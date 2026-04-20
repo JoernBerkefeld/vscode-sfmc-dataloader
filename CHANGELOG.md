@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.1.0] — 2026-04-20
+
+### Added
+
+- **Refresh DE cache** — Load Data Extension names and customer keys for a credential and selected BUs into a **session-only** list (cleared when you restart VS Code). Use it before picking DEs from a list on export.
+- **Export from a DE list** — After you choose credential and BU, pick **From DE list** (filterable) or **Enter DE keys manually**. If the list is empty, the extension can refresh the cache for that BU first.
+- **Status bar shortcut** — A **mcdata** item on the status bar opens the SFMC Data output; the hover tooltip links to **Show Output** and **Settings**.
+- **Show Output** — Command Palette entry to open the SFMC Data output channel.
+- **Optional debug logging** — Setting **Create debug log** (`sfmcData.createDebugLog`) adds the same **`--debug`** flag the standalone CLI uses, so support-style traces are written under **`./logs/data/`** in your project. (Does not apply to **Refresh DE cache**, which does not shell out to `mcdata`.)
+- **Clearer export progress** — The cancellable export notification can show **which batch** of the download you are on when the CLI reports paging.
+- **See what ran** — The output channel shows the **`mcdata` command line** (including debug when enabled) so you can copy it for logs or support tickets.
+- **Cancellation note** — If you cancel a run, the output channel records that you cancelled it.
+
+### Changed
+
+- **Bundled `mcdata`** — Shipped CLI is now built from **sfmc-dataloader 2.7.x**: large exports and imports stream instead of holding the whole file in memory, uploads use **smaller batches** so long jobs feel steadier and time out less often, and **connection / offline handling** is improved in the underlying SDK (no endless retry loop when there is no network).
+
 ## [1.0.0] — 2026-04-15
 
 ### Added

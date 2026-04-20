@@ -6,7 +6,8 @@ let channel: vscode.OutputChannel | undefined;
 
 /**
  * Creates the extension output channel and registers disposal on deactivate.
- * @param context
+ * @param context - VS Code extension context for subscription lifetime
+ * @returns {vscode.OutputChannel} the **SFMC Data Loader** output channel
  */
 export function registerSfmcDataOutput(context: vscode.ExtensionContext): vscode.OutputChannel {
     channel = vscode.window.createOutputChannel(CHANNEL_NAME);

@@ -11,6 +11,8 @@
         "skipLibCheck": true
     },
     "include": [
+        "src/deCache.ts",
+        "src/config.ts",
         "src/argbuilder.ts",
         "src/filePathParser.ts",
         "src/importModeCore.ts",
@@ -18,6 +20,10 @@
         "src/mcdevrcParser.ts",
         "src/mcdataResolve.ts",
         "src/mcdataShellCommand.ts",
+        "src/mcdataDebugArgs.ts",
+        "src/statusBarMcdata.ts",
+        "src/statusBarMcdataTooltip.ts",
+        "src/sfmcDataOutput.ts",
         "src/sfmc-dataloader.d.ts",
         "src/whatsNewCore.ts",
         "src/test"

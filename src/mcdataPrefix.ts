@@ -4,9 +4,9 @@ import { buildMcdataShellPrefix, normalizeMcdataSource } from './mcdataResolve';
 /**
  * Resolves the shell command prefix for `mcdata` per `sfmcData.mcdataSource` and `sfmcData.mcdataPath`.
  * Shows an error message if resolution fails (e.g. missing bundled script, empty custom path).
- * @param context
- * @param projectRoot
- * @returns The prefix string, or `undefined` if resolution failed.
+ * @param context - VS Code extension context (for `extensionPath` and workspace config)
+ * @param projectRoot - absolute path to the project root used as mcdata cwd
+ * @returns {string | undefined} shell prefix before argv (e.g. `node "…/mcdata.bundled.cjs"`), or undefined on failure
  */
 export function resolveMcdataShellPrefix(
     context: vscode.ExtensionContext,
