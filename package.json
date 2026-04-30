@@ -57,7 +57,7 @@
         "prettier": "^3.8.1",
         "sfmc-dataloader": "^2.7.0",
         "typescript": "^5.9.2",
-        "typescript-eslint": "^8.57.2"
+        "typescript-eslint": "^8.59.1"
     },
     "contributes": {
         "commands": [
