@@ -10,7 +10,66 @@ import {
     buildMcdataShellPrefix,
     getWorkspaceBinMcdata,
     normalizeMcdataSource,
+    isBundledNodeVersionSupported,
 } from '../mcdataResolve';
+
+describe('bundled Node runtime', () => {
+    for (const version of ['v22.22.2', '22.23.0', 'v24.15.0', 'v25.0.0', 'v26.0.0']) {
+        it(`accepts ${version}`, () => assert.ok(isBundledNodeVersionSupported(version)));
+    }
+    for (const version of [
+        'v20.19.0',
+        'v22.22.1',
+        'v23.9.0',
+        'v24.14.9',
+        'unknown',
+        '',
+        'v24.15.0-rc.1',
+    ]) {
+        it(`rejects ${version || 'empty output'}`, () =>
+            assert.ok(!isBundledNodeVersionSupported(version)));
+    }
+    for (const source of ['bundled', 'auto'] as const) {
+        it(`checks the external runtime for ${source} fallback`, () => {
+            const result = buildMcdataShellPrefix(
+                {
+                    mcdataSource: source,
+                    customPath: '',
+                    projectRoot: '/proj',
+                    extensionPath: '/ext',
+                },
+                {
+                    existsSync: (p) => String(p) === bundledMcdataScriptPath('/ext'),
+                    execSync: (() => {
+                        throw new Error('no mcdata');
+                    }) as typeof nodeExecSync,
+                    execFileSync: (() =>
+                        'v20.19.0') as unknown as typeof import('node:child_process').execFileSync,
+                }
+            );
+            assert.ok('error' in result);
+            assert.match(result.error, /22\.22\.2.*24\.15\.0/);
+        });
+    }
+    it('returns actionable guidance when node cannot run', () => {
+        const result = buildMcdataShellPrefix(
+            {
+                mcdataSource: 'bundled',
+                customPath: '',
+                projectRoot: '/proj',
+                extensionPath: '/ext',
+            },
+            {
+                existsSync: () => true,
+                execFileSync: (() => {
+                    throw new Error('ENOENT');
+                }) as typeof import('node:child_process').execFileSync,
+            }
+        );
+        assert.ok('error' in result);
+        assert.match(result.error, /Could not determine.*Upgrade Node.js/);
+    });
+});
 
 describe('normalizeMcdataSource', () => {
     it('returns bundled for unknown values', () => {
@@ -65,6 +124,27 @@ describe('getWorkspaceBinMcdata', () => {
 });
 
 describe('buildMcdataShellPrefix', () => {
+    for (const source of ['custom', 'workspace', 'path'] as const) {
+        it(`does not probe external node for ${source} executable`, () => {
+            const result = buildMcdataShellPrefix(
+                {
+                    mcdataSource: source === 'custom' ? 'custom' : 'auto',
+                    customPath: 'custom-mcdata',
+                    projectRoot: '/proj',
+                    extensionPath: '/ext',
+                },
+                {
+                    existsSync: () => source === 'workspace',
+                    execSync: (() => '') as unknown as typeof nodeExecSync,
+                    execFileSync: (() => {
+                        throw new Error('must not probe node');
+                    }) as typeof import('node:child_process').execFileSync,
+                }
+            );
+            assert.ok('prefix' in result);
+        });
+    }
+
     it('custom source uses trimmed path', () => {
         const r = buildMcdataShellPrefix({
             mcdataSource: 'custom',
@@ -107,6 +187,8 @@ describe('buildMcdataShellPrefix', () => {
                 {
                     platform: 'linux',
                     existsSync: (p: fs.PathLike) => String(p) === script,
+                    execFileSync: (() =>
+                        'v24.15.0') as unknown as typeof import('node:child_process').execFileSync,
                     execSync: (() => {
                         throw new Error('should not probe PATH');
                     }) as typeof nodeExecSync,
@@ -191,6 +273,8 @@ describe('buildMcdataShellPrefix', () => {
                 {
                     platform: 'linux',
                     existsSync: (p: fs.PathLike) => String(p) === script,
+                    execFileSync: (() =>
+                        'v24.15.0') as unknown as typeof import('node:child_process').execFileSync,
                     execSync: (() => {
                         throw new Error('not on path');
                     }) as typeof nodeExecSync,

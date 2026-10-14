@@ -14,7 +14,22 @@ const pkg = JSON.parse(readFileSync(join(dlRoot, 'package.json'), 'utf8'));
 const version = typeof pkg.version === 'string' ? pkg.version : '';
 
 await esbuild.build({
-    entryPoints: [join(dlRoot, 'bin', 'mcdata.mjs')],
+    // The published CLI uses top-level await; retain CJS packaging with an async wrapper.
+    stdin: {
+        contents: `import { main } from './lib/cli.mjs';
+(async () => {
+    try {
+        const code = await main(process.argv);
+        process.exit(typeof code === 'number' ? code : 0);
+    } catch (error) {
+        console.error(error.message ?? String(error));
+        process.exit(1);
+    }
+})();`,
+        resolveDir: dlRoot,
+        sourcefile: 'mcdata-wrapper.mjs',
+        loader: 'js',
+    },
     bundle: true,
     outfile: join(projectRoot, 'out', 'mcdata.bundled.cjs'),
     platform: 'node',
@@ -25,7 +40,9 @@ await esbuild.build({
     // globalThis.__sfmc_dataloader_version__ is absent (i.e. never in the bundle).
     // Replacing it with the actual resolved path makes the dead code branch silent.
     define: {
-        'import.meta.url': JSON.stringify(`file://${join(dlRoot, 'bin', 'mcdata.mjs').replaceAll('\\', '/')}`),
+        'import.meta.url': JSON.stringify(
+            `file://${join(dlRoot, 'bin', 'mcdata.mjs').replaceAll('\\', '/')}`
+        ),
     },
     banner: {
         js: `globalThis.__sfmc_dataloader_version__=${JSON.stringify(version)};`,

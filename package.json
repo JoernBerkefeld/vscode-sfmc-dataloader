@@ -4,7 +4,7 @@
     "description": "Export and import Salesforce Marketing Cloud Engagement Data Extension rows via the mcdata CLI (sfmc-dataloader).",
     "author": "JÃ¶rn Berkefeld",
     "license": "MIT",
-    "version": "1.3.0",
+    "version": "2.0.0",
     "repository": {
         "type": "git",
         "url": "https://github.com/JoernBerkefeld/vscode-sfmc-dataloader.git"
@@ -13,9 +13,7 @@
         "url": "https://github.com/JoernBerkefeld/vscode-sfmc-dataloader/issues"
     },
     "publisher": "joernberkefeld",
-    "categories": [
-        "Other"
-    ],
+    "categories": ["Other"],
     "keywords": [
         "sfmc",
         "salesforce",
@@ -38,9 +36,7 @@
         "vscode": "^1.101.0"
     },
     "main": "./out/extension.js",
-    "activationEvents": [
-        "onStartupFinished"
-    ],
+    "activationEvents": ["onStartupFinished"],
     "devDependencies": {
         "@eslint/js": "^10.0.1",
         "@types/node": "^26",
@@ -56,7 +52,7 @@
         "husky": "^9.1.7",
         "lint-staged": "^17.3.0",
         "prettier": "^3.9.6",
-        "sfmc-dataloader": "^2.7.0",
+        "sfmc-dataloader": "^3.0.0",
         "typescript": "^5.9.3",
         "typescript-eslint": "^8.67.0"
     },
@@ -220,11 +216,7 @@
             "properties": {
                 "sfmcData.mcdataSource": {
                     "type": "string",
-                    "enum": [
-                        "bundled",
-                        "auto",
-                        "custom"
-                    ],
+                    "enum": ["bundled", "auto", "custom"],
                     "enumDescriptions": [
                         "Use only the minified CLI shipped with this extension (`node â€¦/out/mcdata.bundled.cjs`). Does not probe workspace `.bin` or `PATH`.",
                         "Resolve like before: workspace `node_modules/.bin/mcdata` when present, then `mcdata` on the process `PATH` (shell lookup), then the bundled CLI.",
@@ -260,10 +252,7 @@
                 },
                 "sfmcData.importMode": {
                     "type": "string",
-                    "enum": [
-                        "upsert",
-                        "insert"
-                    ],
+                    "enum": ["upsert", "insert"],
                     "enumDescriptions": [
                         "Update if primary key exists, else insert (async bulk API)",
                         "Insert new rows only (async bulk API)"
@@ -273,26 +262,14 @@
                 },
                 "sfmcData.defaultFormat": {
                     "type": "string",
-                    "enum": [
-                        "csv",
-                        "tsv",
-                        "json"
-                    ],
+                    "enum": ["csv", "tsv", "json"],
                     "default": "csv",
                     "description": "Default file format for exports. Import format is detected automatically from the file extension."
                 },
                 "sfmcData.backupBeforeImport": {
                     "type": "string",
-                    "enum": [
-                        "prompt",
-                        "always",
-                        "never"
-                    ],
-                    "enumItemLabels": [
-                        "Always ask",
-                        "Always backup",
-                        "Never backup"
-                    ],
+                    "enum": ["prompt", "always", "never"],
+                    "enumItemLabels": ["Always ask", "Always backup", "Never backup"],
                     "markdownEnumDescriptions": [
                         "Before each import, show a QuickPick asking whether to export a timestamped backup of the current target DE rows (passes `--backup-before-import` or `--no-backup-before-import` based on your answer).",
                         "Always export a timestamped backup of the target DE rows before import without asking (passes `--backup-before-import`).",
@@ -312,6 +289,7 @@
     "scripts": {
         "vscode:prepublish": "npm run bundle:mcdata && npm run esbuild -- --minify",
         "bundle:mcdata": "node ./scripts/bundle-mcdata.mjs",
+        "verify:vsix": "node ./scripts/verify-vsix.mjs",
         "esbuild": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --define:import.meta.url='\"\"'",
         "compile": "npm run bundle:mcdata && npm run esbuild && tsc -p tsconfig.test.json",
         "watch": "npm run esbuild -- --watch",
@@ -325,8 +303,6 @@
         "test": "node --require ./out/test/test/registerVscodeMock.js --test out/test/**/*.test.js && node ./scripts/validate-telemetry-catalog.mjs"
     },
     "lint-staged": {
-        "*.{js,mjs,cjs,ts}": [
-            "eslint --fix"
-        ]
+        "*.{js,mjs,cjs,ts}": ["eslint --fix"]
     }
 }

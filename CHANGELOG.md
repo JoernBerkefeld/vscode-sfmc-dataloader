@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.0.0] — 2026-10-14
+
+### Breaking Changes
+
+- Bundled row operations now require external Node.js `^22.22.2 || >=24.15.0` on `PATH`; Node 20 and 23 are no longer supported. Upgrade Node.js and restart VS Code/Cursor. Independently selected workspace, `PATH`, and custom executables retain their own requirements; the VS Code engine floor is unchanged.
+
+### Fixed
+
+- Check the external Node.js version before bundled execution, including the automatic fallback, and provide actionable guidance for missing or unsupported runtimes.
+- Adapt the published CLI's asynchronous entry point to the relocatable CommonJS fallback bundle.
+
+### Dependencies
+
+- Update bundled `sfmc-dataloader` from 2.7.0 to 3.0.0 and its SDK from 3.2.2 to 4.0.2, retaining forward-compatible authentication scopes.
+
 ## [1.3.0] — 2026-09-09
 
 ### Changed

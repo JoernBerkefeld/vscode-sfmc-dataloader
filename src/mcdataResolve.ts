@@ -1,12 +1,13 @@
 import * as fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 
 /**
  * Optional overrides for unit tests.
  */
 export type McdataResolveDependencies = {
     existsSync?: typeof fs.existsSync;
+    execFileSync?: typeof execFileSync;
     execSync?: typeof execSync;
     platform?: NodeJS.Platform;
 };
@@ -98,7 +99,43 @@ function bundledPrefixOrError(
             error: `Bundled mcdata not found at ${bundled}. Reinstall the extension or set sfmcData.mcdataSource to "auto" or "custom".`,
         };
     }
+    const run = dependencies?.execFileSync ?? execFileSync;
+    const guidance =
+        'Bundled mcdata requires Node.js ^22.22.2 || >=24.15.0 on PATH. Upgrade Node.js and restart VS Code/Cursor, or select a compatible executable with sfmcData.mcdataSource "auto" or "custom".';
+    try {
+        const version = String(
+            run('node', ['--version'], {
+                encoding: 'utf8',
+                windowsHide: true,
+                timeout: 5000,
+                stdio: ['ignore', 'pipe', 'ignore'],
+            })
+        ).trim();
+        if (!isBundledNodeVersionSupported(version)) {
+            return { error: `${guidance} Detected: ${version}.` };
+        }
+    } catch {
+        return { error: `Could not determine the Node.js version on PATH. ${guidance}` };
+    }
     return { prefix: `node ${quoteShellToken(bundled)}` };
+}
+
+/**
+ * Tests the external runtime against the bundled loader's supported Node releases.
+ * @param version - output of node --version
+ * @returns {boolean} whether the stable release satisfies ^22.22.2 || >=24.15.0
+ */
+export function isBundledNodeVersionSupported(version: string): boolean {
+    const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(version.trim());
+    if (!match) {
+        return false;
+    }
+    const [, major, minor, patch] = match.map(Number);
+    return (
+        (major === 22 && (minor > 22 || (minor === 22 && patch >= 2))) ||
+        major > 24 ||
+        (major === 24 && minor >= 15)
+    );
 }
 
 /**

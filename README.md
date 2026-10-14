@@ -5,7 +5,8 @@ A lightweight VS Code extension for **Salesforce Marketing Cloud Engagement** th
 ## Requirements
 
 - A project initialised with `mcdata init` (`.mcdatarc.json` + `.mcdata-auth.json`) **or** an existing [`mcdev`](https://www.npmjs.com/package/mcdev) project (`.mcdevrc.json` + `.mcdev-auth.json`) in the workspace root
-- [`Node.js`](https://nodejs.org/) on the **process `PATH`** when using the bundled CLI (`node …/out/mcdata.bundled.cjs`) or when `sfmcData.mcdataSource` is `auto` and `mcdata` is resolved from the environment.
+- For the bundled CLI, [`Node.js`](https://nodejs.org/) **22.22.2 or later in the 22.x line, or 24.15.0 and later** (`^22.22.2 || >=24.15.0`) on the **process `PATH`**. Node 20 and 23 are not supported by the bundled loader in extension 2.0.0. The extension checks `node --version` before bundled execution, including the `auto` fallback. If the runtime is missing or unsupported, upgrade Node.js and restart VS Code/Cursor so it picks up the updated `PATH`.
+- Workspace, `PATH`, and custom `mcdata` executables retain their own runtime requirements; the bundled-runtime check does not apply to those overrides. VS Code's extension-host runtime is separate from the external Node.js used for row import/export.
 - **Optional:** your own [`sfmc-dataloader`](https://www.npmjs.com/package/sfmc-dataloader) install if you want a specific version. The extension **bundles** a compatible `sfmc-dataloader`. Use **`sfmcData.mcdataSource`** to choose how the extension resolves `mcdata`:
   - **`bundled`** (default) — only the minified CLI shipped with the extension (`node …/out/mcdata.bundled.cjs`).
   - **`auto`** — workspace `node_modules/.bin/mcdata` when present, then `mcdata` on the process `PATH`, then the bundled CLI (same discovery order as older releases when no custom path was set).
