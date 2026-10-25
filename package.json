@@ -13,7 +13,9 @@
         "url": "https://github.com/JoernBerkefeld/vscode-sfmc-dataloader/issues"
     },
     "publisher": "joernberkefeld",
-    "categories": ["Other"],
+    "categories": [
+        "Other"
+    ],
     "keywords": [
         "sfmc",
         "salesforce",
@@ -46,7 +48,9 @@
         }
     },
     "main": "./out/extension.js",
-    "activationEvents": ["onStartupFinished"],
+    "activationEvents": [
+        "onStartupFinished"
+    ],
     "devDependencies": {
         "@eslint/js": "^10.0.1",
         "@types/node": "^26",
@@ -62,7 +66,7 @@
         "husky": "^9.1.7",
         "lint-staged": "^17.3.0",
         "prettier": "^3.9.6",
-        "sfmc-dataloader": "^3.1.0",
+        "sfmc-dataloader": "^3.1.1",
         "typescript": "^5.9.3",
         "typescript-eslint": "^8.67.0"
     },
@@ -227,7 +231,11 @@
                 "sfmcData.mcdataSource": {
                     "scope": "resource",
                     "type": "string",
-                    "enum": ["bundled", "auto", "custom"],
+                    "enum": [
+                        "bundled",
+                        "auto",
+                        "custom"
+                    ],
                     "enumDescriptions": [
                         "Use only the minified CLI shipped with this extension (`node â€¦/out/mcdata.bundled.cjs`). Does not probe workspace `.bin` or `PATH`.",
                         "Try the workspace `node_modules/.bin/mcdata`, then `mcdata` on the process `PATH`, then the bundled CLI. Launch without a shell; recognized npm `.cmd` shims run directly through Node.js.",
@@ -274,7 +282,10 @@
                 "sfmcData.importMode": {
                     "scope": "resource",
                     "type": "string",
-                    "enum": ["upsert", "insert"],
+                    "enum": [
+                        "upsert",
+                        "insert"
+                    ],
                     "enumDescriptions": [
                         "Update if primary key exists, else insert (async bulk API)",
                         "Insert new rows only (async bulk API)"
@@ -285,15 +296,27 @@
                 "sfmcData.defaultFormat": {
                     "scope": "resource",
                     "type": "string",
-                    "enum": ["csv", "tsv", "json"],
+                    "enum": [
+                        "csv",
+                        "tsv",
+                        "json"
+                    ],
                     "default": "csv",
                     "description": "Default file format for exports. Import format is detected automatically from the file extension."
                 },
                 "sfmcData.backupBeforeImport": {
                     "scope": "resource",
                     "type": "string",
-                    "enum": ["prompt", "always", "never"],
-                    "enumItemLabels": ["Always ask", "Always backup", "Never backup"],
+                    "enum": [
+                        "prompt",
+                        "always",
+                        "never"
+                    ],
+                    "enumItemLabels": [
+                        "Always ask",
+                        "Always backup",
+                        "Never backup"
+                    ],
                     "markdownEnumDescriptions": [
                         "Before each import, show a QuickPick asking whether to export a timestamped backup of the current target DE rows (passes `--backup-before-import` or `--no-backup-before-import` based on your answer).",
                         "Always export a timestamped backup of the target DE rows before import without asking (passes `--backup-before-import`).",
@@ -328,6 +351,8 @@
         "test": "node --require ./out/test/test/registerVscodeMock.js --test out/test/**/*.test.js && node ./scripts/validate-telemetry-catalog.mjs"
     },
     "lint-staged": {
-        "*.{js,mjs,cjs,ts}": ["eslint --fix"]
+        "*.{js,mjs,cjs,ts}": [
+            "eslint --fix"
+        ]
     }
 }
