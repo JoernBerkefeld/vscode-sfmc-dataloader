@@ -205,8 +205,14 @@ describe('owned process lifecycle', () => {
                 .resolve(value)
                 .replace(/[\\/]+$/, '')
                 .toLowerCase() === String.raw`f:\temp`;
-        assert.ok(isValid(process.env.TEMP) && isValid(tmpdir()));
-        assert.ok([process.env.TMP, process.env.TMPDIR].every((value) => !value || isValid(value)));
+        if (process.platform === 'win32') {
+            assert.ok(isValid(process.env.TEMP) && isValid(tmpdir()));
+            assert.ok(
+                [process.env.TMP, process.env.TMPDIR].every((value) => !value || isValid(value))
+            );
+        } else {
+            assert.ok(path.isAbsolute(tmpdir()));
+        }
         const root = await mkdtemp(path.join(tmpdir(), 'mcdata-lifecycle-'));
         const marker = path.join(root, 'owner');
         const heartbeat = path.join(root, 'heartbeat');
