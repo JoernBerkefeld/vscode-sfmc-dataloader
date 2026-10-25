@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.1.2] — 2026-10-25
+
+### Fixed
+
+- Report malformed project and authentication JSON using filename-only errors without exposing JSON excerpts. Public project discovery does not parse authentication contents; operations requiring authentication still validate it.
+
+### Dependencies
+
+- Update bundled `sfmc-dataloader` from 3.1.1 to 3.2.0.
+
 ## [2.1.1] — 2026-10-25
 
 ### Fixed

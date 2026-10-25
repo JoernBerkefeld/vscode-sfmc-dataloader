@@ -11,6 +11,24 @@ import * as esbuild from 'esbuild';
 const require = createRequire(import.meta.url);
 const yauzl = require('yauzl');
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+if (process.platform === 'win32') {
+    for (const [name, value] of Object.entries({
+        TEMP: process.env.TEMP,
+        TMP: process.env.TMP,
+        TMPDIR: process.env.TMPDIR,
+        node: os.tmpdir(),
+    })) {
+        if (!value && name !== 'TEMP') continue;
+        assert.ok(value && path.isAbsolute(value), `${name} must be absolute`);
+        assert.equal(
+            path
+                .resolve(value)
+                .replace(/[\\/]+$/u, '')
+                .toLowerCase(),
+            'f:\\temp'
+        );
+    }
+}
 const temporary = mkdtempSync(path.join(os.tmpdir(), 'sfmc-data-vsix-'));
 const archive = path.resolve(process.argv[2] ?? path.join(root, 'sfmc-data-BETA.vsix'));
 // Fixtures are retained for diagnosis; no recursive cleanup is performed.
@@ -54,8 +72,9 @@ await new Promise((resolve, reject) => {
 });
 const cli = path.join(temporary, 'extension/out/mcdata.bundled.cjs');
 const manifest = JSON.parse(readFileSync(path.join(temporary, 'extension/package.json'), 'utf8'));
-assert.equal(manifest.version, '2.1.1');
-assert.equal(manifest.devDependencies['sfmc-dataloader'], '^3.1.1');
+const sourceManifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+assert.equal(manifest.version, sourceManifest.version);
+assert.equal(manifest.devDependencies['sfmc-dataloader'], '^3.2.0');
 assert.equal(manifest.engines.vscode, '^1.101.0');
 assert.equal(
     manifest.contributes.configuration.properties['sfmcData.skipEmptyLines'].type,
@@ -67,7 +86,7 @@ assert.equal(
 );
 assert.equal(
     execFileSync(process.execPath, [cli, '--version'], { cwd: temporary, encoding: 'utf8' }).trim(),
-    '3.1.1'
+    '3.2.0'
 );
 assert.match(
     execFileSync(process.execPath, [cli, '--help'], { cwd: temporary, encoding: 'utf8' }),
@@ -86,6 +105,43 @@ for (const directory of [temporary, path.join(temporary, 'nested project')]) {
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /config|\.mcdevrc|\.mcdatarc/i);
     assert.doesNotMatch(result.stderr, /MODULE_NOT_FOUND|ENOENT.*node_modules|constraints\.json/);
+}
+// Verify the extracted production CLI, not a newly built surrogate, masks malformed config.
+for (const family of ['mcdev', 'mcdata']) {
+    for (const malformed of ['public', 'auth']) {
+        const project = path.join(temporary, `${family}-${malformed}`);
+        mkdirSync(project);
+        const publicName = family === 'mcdev' ? '.mcdevrc.json' : '.mcdatarc.json';
+        const authName = `.${family}-auth.json`;
+        const sentinel = 'SECRET_JSON_SENTINEL_DO_NOT_DISCLOSE';
+        writeFileSync(
+            path.join(project, publicName),
+            malformed === 'public'
+                ? `{"${sentinel}":}`
+                : JSON.stringify({ credentials: { org: { eid: 100, businessUnits: { bu: 101 } } } })
+        );
+        writeFileSync(
+            path.join(project, authName),
+            malformed === 'auth' ? `{"${sentinel}":}` : '{}'
+        );
+        for (const args of [
+            ['export', 'org/bu', '--de', 'fixture'],
+            ['import', 'org/bu', '--de', 'fixture', '--no-backup-before-import'],
+        ]) {
+            const result = spawnSync(process.execPath, [cli, ...args], {
+                cwd: project,
+                encoding: 'utf8',
+                timeout: 30_000,
+            });
+            assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+            assert.ok(
+                `${result.stdout}\n${result.stderr}`.includes(
+                    `Invalid JSON in ${malformed === 'public' ? publicName : authName}. Fix the file and try again.`
+                )
+            );
+            assert.ok(!`${result.stdout}\n${result.stderr}`.includes(sentinel));
+        }
+    }
 }
 // Exercise the same loader/SDK graph used by in-process cache refresh in a relocated CJS bundle.
 const probe = path.join(temporary, 'library.cjs');
