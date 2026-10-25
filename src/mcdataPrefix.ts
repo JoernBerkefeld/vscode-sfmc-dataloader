@@ -1,21 +1,22 @@
 import * as vscode from 'vscode';
-import { buildMcdataShellPrefix, normalizeMcdataSource } from './mcdataResolve';
+import { getProjectConfiguration as getProjectConfig } from './config';
+import { buildMcdataLaunch, normalizeMcdataSource, type McdataLaunch } from './mcdataResolve';
 
 /**
- * Resolves the shell command prefix for `mcdata` per `sfmcData.mcdataSource` and `sfmcData.mcdataPath`.
+ * Resolves the executable and prefix argv per `sfmcData` launcher settings.
  * Shows an error message if resolution fails (e.g. missing bundled script, empty custom path).
  * @param context - VS Code extension context (for `extensionPath` and workspace config)
  * @param projectRoot - absolute path to the project root used as mcdata cwd
- * @returns {string | undefined} shell prefix before argv (e.g. `node "…/mcdata.bundled.cjs"`), or undefined on failure
+ * @returns {Promise<McdataLaunch | undefined>} shell-free launcher, or undefined on failure
  */
-export function resolveMcdataShellPrefix(
+export async function resolveMcdataLaunch(
     context: vscode.ExtensionContext,
     projectRoot: string
-): string | undefined {
-    const config = vscode.workspace.getConfiguration('sfmcData');
+): Promise<McdataLaunch | undefined> {
+    const config = getProjectConfig(projectRoot);
     const mcdataSource = normalizeMcdataSource(config.get<string>('mcdataSource'));
     const customPath = config.get<string>('mcdataPath');
-    const result = buildMcdataShellPrefix({
+    const result = await buildMcdataLaunch({
         mcdataSource,
         customPath: customPath ?? '',
         projectRoot,
@@ -25,5 +26,5 @@ export function resolveMcdataShellPrefix(
         void vscode.window.showErrorMessage(result.error);
         return undefined;
     }
-    return result.prefix;
+    return result;
 }

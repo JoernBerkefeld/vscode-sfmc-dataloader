@@ -1,38 +1,28 @@
 import * as vscode from 'vscode';
 import { fetchDeList } from 'sfmc-dataloader';
 import { trackCommandOutcome } from '../commandTelemetry';
-import { findProjectRoot, readProjectConfig } from '../config';
-import { setDeCacheBu } from '../deCache';
+import { selectProjectRoot, readProjectConfig } from '../config';
+import { createDeCacheIdentity, setDeCacheBu, type DeCacheIdentity } from '../deCache';
 import { getBusinessUnits, getCredentials } from '../mcdevrcParser';
 import { getReporter } from '../telemetry';
 
 /**
  * Fetch DE list for one credential/BU and store in extension cache.
  * Used by the Refresh command (multi-BU loop) and by Export when cache is missing.
- * @param projectRoot - absolute workspace folder containing `.mcdevrc.json` or `.mcdatarc.json`
- * @param credential - key from project config `credentials`
- * @param bu - business unit name under that credential
+ * @param identity - public project/account/BU identity captured before fetching
  */
-export async function fetchAndStoreDeCache(
-    projectRoot: string,
-    credential: string,
-    bu: string
-): Promise<void> {
+export async function fetchAndStoreDeCache(identity: DeCacheIdentity): Promise<void> {
+    const { projectRoot, credential, bu } = identity;
     const items = await fetchDeList(projectRoot, credential, bu);
-    setDeCacheBu(credential, bu, items);
+    setDeCacheBu(identity, items);
 }
 
 /**
  * Refresh DE cache for a single credential/BU with progress UI.
- * @param projectRoot - absolute workspace folder containing `.mcdevrc.json` or `.mcdatarc.json`
- * @param credential - key from project config `credentials`
- * @param bu - business unit name under that credential
+ * @param identity - public project/account/BU identity captured before fetching
  */
-export async function refreshDeCacheForBu(
-    projectRoot: string,
-    credential: string,
-    bu: string
-): Promise<void> {
+export async function refreshDeCacheForBu(identity: DeCacheIdentity): Promise<void> {
+    const { credential, bu } = identity;
     await vscode.window.withProgress(
         {
             location: vscode.ProgressLocation.Notification,
@@ -41,7 +31,7 @@ export async function refreshDeCacheForBu(
         },
         async (progress) => {
             progress.report({ message: `Loading DE list: ${credential}/${bu}…` });
-            await fetchAndStoreDeCache(projectRoot, credential, bu);
+            await fetchAndStoreDeCache(identity);
         }
     );
 }
@@ -53,13 +43,8 @@ export function registerRefreshDeCacheCommand(context: vscode.ExtensionContext):
 }
 
 async function refreshDeCache(): Promise<void> {
-    const projectRoot = findProjectRoot(vscode.workspace.workspaceFolders);
-    if (!projectRoot) {
-        void vscode.window.showErrorMessage(
-            "No SFMC project config found. Use 'SFMC Data: Initialize Project' or open a folder containing .mcdevrc.json or .mcdatarc.json."
-        );
-        return;
-    }
+    const projectRoot = await selectProjectRoot(vscode.workspace.workspaceFolders, 'palette');
+    if (!projectRoot) return;
 
     let mcdevrc;
     try {
@@ -126,7 +111,14 @@ async function refreshDeCache(): Promise<void> {
                     message: `Loading DE list (${index}/${total}): ${credential}/${bu}…`,
                 });
                 try {
-                    await fetchAndStoreDeCache(projectRoot, credential, bu);
+                    await fetchAndStoreDeCache(
+                        createDeCacheIdentity(
+                            projectRoot,
+                            readProjectConfig(projectRoot),
+                            credential,
+                            bu
+                        )
+                    );
                 } catch (ex) {
                     lastError = ex;
                     const message = ex instanceof Error ? ex.message : String(ex);

@@ -1,8 +1,12 @@
 import * as vscode from 'vscode';
 import type { DeItem } from 'sfmc-dataloader';
-import { findProjectRoot, readProjectConfig } from '../config';
+import {
+    selectProjectRoot,
+    getProjectConfiguration as getProjectConfig,
+    readProjectConfig,
+} from '../config';
 import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
-import { getDeCacheForBu, hasDeCacheForBu } from '../deCache';
+import { createDeCacheIdentity, getDeCacheForBu } from '../deCache';
 import { runMcdataWithProgress } from '../runMcdata';
 import { buildExportArguments } from '../argbuilder';
 import { refreshDeCacheForBu } from './refreshDeCache';
@@ -30,13 +34,8 @@ function buildDePickItems(items: DeItem[]): DePickItem[] {
 }
 
 async function exportDE(context: vscode.ExtensionContext): Promise<void> {
-    const projectRoot = findProjectRoot(vscode.workspace.workspaceFolders);
-    if (!projectRoot) {
-        void vscode.window.showErrorMessage(
-            "No SFMC project config found. Use 'SFMC Data: Initialize Project' or open a folder containing .mcdevrc.json or .mcdatarc.json."
-        );
-        return;
-    }
+    const projectRoot = await selectProjectRoot(vscode.workspace.workspaceFolders, 'palette');
+    if (!projectRoot) return;
 
     let mcdevrc;
     try {
@@ -115,16 +114,23 @@ async function exportDE(context: vscode.ExtensionContext): Promise<void> {
             .map((k) => k.trim())
             .filter(Boolean);
     } else {
-        let cached = getDeCacheForBu(credential, bu);
-        if (!hasDeCacheForBu(credential, bu) || !cached?.length) {
-            try {
-                await refreshDeCacheForBu(projectRoot, credential, bu);
-            } catch (ex) {
-                const message = ex instanceof Error ? ex.message : String(ex);
-                void vscode.window.showErrorMessage(`Failed to refresh DE cache: ${message}`);
-                return;
+        let cached: DeItem[] | undefined;
+        try {
+            const identity = createDeCacheIdentity(
+                projectRoot,
+                readProjectConfig(projectRoot),
+                credential,
+                bu
+            );
+            cached = getDeCacheForBu(identity);
+            if (cached === undefined) {
+                await refreshDeCacheForBu(identity);
+                cached = getDeCacheForBu(identity);
             }
-            cached = getDeCacheForBu(credential, bu);
+        } catch (ex) {
+            const message = ex instanceof Error ? ex.message : String(ex);
+            void vscode.window.showErrorMessage(`Failed to refresh DE cache: ${message}`);
+            return;
         }
         if (!cached?.length) {
             void vscode.window.showErrorMessage('No Data Extensions found for this Business Unit.');
@@ -142,7 +148,7 @@ async function exportDE(context: vscode.ExtensionContext): Promise<void> {
         deKeys = selected.map((s) => s.deKey);
     }
 
-    const config = vscode.workspace.getConfiguration('sfmcData');
+    const config = getProjectConfig(projectRoot);
     const format = config.get<string>('defaultFormat') ?? 'csv';
     const isUseGit = config.get<boolean>('useGitFilenames') === true;
 

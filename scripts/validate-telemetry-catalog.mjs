@@ -21,7 +21,7 @@
  */
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -203,5 +203,17 @@ try {
     assert.deepEqual(dump['vscode-extensions'], {});
     console.log('Validated telemetry.json through the VS Code --telemetry discovery merger.');
 } finally {
-    rmSync(tempRoot, { recursive: true, force: true });
+    for (const file of [
+        join(appRoot, 'telemetry-core.json'),
+        join(appRoot, 'telemetry-extensions.json'),
+        join(installedExtensionDir, 'telemetry.json'),
+    ]) {
+        // Creation may have failed before every fixture file was written.
+        if (existsSync(file)) unlinkSync(file);
+    }
+    for (const directory of [installedExtensionDir, extensionsDir, appRoot]) {
+        if (existsSync(directory)) rmdirSync(directory);
+    }
+    rmdirSync(tempRoot);
+    assert.ok(!existsSync(tempRoot), 'Telemetry fixture root is removed nonrecursively');
 }

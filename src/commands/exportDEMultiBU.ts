@@ -1,5 +1,9 @@
 import * as vscode from 'vscode';
-import { findProjectRoot, readProjectConfig } from '../config';
+import {
+    selectProjectRoot,
+    getProjectConfiguration as getProjectConfig,
+    readProjectConfig,
+} from '../config';
 import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
 import { runMcdataWithProgress } from '../runMcdata';
 import { buildMultiBuExportArguments } from '../argbuilder';
@@ -11,13 +15,8 @@ export function registerExportMultiBUCommand(context: vscode.ExtensionContext): 
 }
 
 async function exportDEMultiBU(context: vscode.ExtensionContext): Promise<void> {
-    const projectRoot = findProjectRoot(vscode.workspace.workspaceFolders);
-    if (!projectRoot) {
-        void vscode.window.showErrorMessage(
-            "No SFMC project config found. Use 'SFMC Data: Initialize Project' or open a folder containing .mcdevrc.json or .mcdatarc.json."
-        );
-        return;
-    }
+    const projectRoot = await selectProjectRoot(vscode.workspace.workspaceFolders, 'palette');
+    if (!projectRoot) return;
 
     let mcdevrc;
     try {
@@ -74,7 +73,7 @@ async function exportDEMultiBU(context: vscode.ExtensionContext): Promise<void> 
         .map((k) => k.trim())
         .filter(Boolean);
 
-    const config = vscode.workspace.getConfiguration('sfmcData');
+    const config = getProjectConfig(projectRoot);
     const format = config.get<string>('defaultFormat') ?? 'csv';
     const isUseGit = config.get<boolean>('useGitFilenames') === true;
 

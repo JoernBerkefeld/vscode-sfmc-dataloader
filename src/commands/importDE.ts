@@ -1,5 +1,9 @@
 import * as vscode from 'vscode';
-import { findProjectRoot, readProjectConfig } from '../config';
+import {
+    selectProjectRoot,
+    getProjectConfiguration as getProjectConfig,
+    readProjectConfig,
+} from '../config';
 import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
 import { runMcdataWithProgress } from '../runMcdata';
 import { buildImportArguments } from '../argbuilder';
@@ -14,13 +18,8 @@ export function registerImportCommand(context: vscode.ExtensionContext): void {
 }
 
 async function importDE(context: vscode.ExtensionContext): Promise<void> {
-    const projectRoot = findProjectRoot(vscode.workspace.workspaceFolders);
-    if (!projectRoot) {
-        void vscode.window.showErrorMessage(
-            "No SFMC project config found. Use 'SFMC Data: Initialize Project' or open a folder containing .mcdevrc.json or .mcdatarc.json."
-        );
-        return;
-    }
+    const projectRoot = await selectProjectRoot(vscode.workspace.workspaceFolders, 'palette');
+    if (!projectRoot) return;
 
     let mcdevrc;
     try {
@@ -82,7 +81,7 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
     );
     if (!importMethod) return;
 
-    const config = vscode.workspace.getConfiguration('sfmcData');
+    const config = getProjectConfig(projectRoot);
     const isUseGit = config.get<boolean>('useGitFilenames') === true;
 
     let deKeys: string[] | undefined;
@@ -122,7 +121,8 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
     const backupBeforeImport = await resolveBackupBeforeImport(config);
     if (backupBeforeImport === undefined) return;
 
-    const clearChoice = await promptOptionalClearBeforeImport();
+    const clearChoice = await promptOptionalClearBeforeImport(config);
+    if (clearChoice === undefined) return;
 
     const credBu = `${credential}/${bu}`;
 

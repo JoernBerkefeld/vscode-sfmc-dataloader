@@ -33,7 +33,15 @@ describe('getProjectFlags', () => {
     });
 
     after(() => {
-        fs.rmSync(root, { recursive: true, force: true });
+        fs.unlinkSync(path.join(mcdevOnly, '.mcdevrc.json'));
+        fs.unlinkSync(path.join(mcdataOnly, '.mcdatarc.json'));
+        fs.unlinkSync(path.join(both, '.mcdevrc.json'));
+        fs.unlinkSync(path.join(both, '.mcdatarc.json'));
+        for (const directory of [mcdevOnly, mcdataOnly, both, empty]) {
+            fs.rmdirSync(directory);
+        }
+        fs.rmdirSync(root);
+        assert.ok(!fs.existsSync(root), 'fixture root is removed nonrecursively');
         resetVscodeStub();
     });
 

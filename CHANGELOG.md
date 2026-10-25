@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.1.1] — 2026-10-25
+
+### Fixed
+
+- Preserve literal CLI arguments without shell interpretation, resolve Windows npm launchers on PATH correctly, and mask credential arguments in command displays.
+- Cancel imports when confirmations are dismissed; preserve dotted/encoded DE keys and reject mixed or unsupported file selections.
+- Resolve commands against their owning project, isolate resource settings and DE caches, and retain successful empty cache results.
+- Report initialization and command outcomes accurately, cancel owned runs on shutdown, and bound retained progress-parser state.
+- Keep Node/PATH probes asynchronous and bounded, and skip version discovery when telemetry is disabled.
+
+### Changed
+
+- Declare virtual and untrusted workspaces unsupported. Cancellation does not roll back submitted API work; Windows custom launchers that exit before their loader child remain a cancellation limitation.
+
 ## [2.1.0] — 2026-10-25
 
 ### Added

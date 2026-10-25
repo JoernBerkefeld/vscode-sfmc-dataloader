@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { findProjectRoot } from '../config';
+import { selectProjectRoot, getProjectConfiguration as getProjectConfig } from '../config';
 import { runMcdataWithProgress } from '../runMcdata';
 import { buildExportArguments } from '../argbuilder';
 import { resolveContextFiles } from './contextUtilities';
@@ -18,7 +18,18 @@ async function contextExportDE(
     uri: vscode.Uri,
     uris: vscode.Uri[]
 ): Promise<void> {
-    const projectRoot = findProjectRoot(vscode.workspace.workspaceFolders);
+    let projectRoot: string | undefined;
+    try {
+        projectRoot = await selectProjectRoot(
+            vscode.workspace.workspaceFolders,
+            'context',
+            uri,
+            uris
+        );
+    } catch (ex) {
+        void vscode.window.showErrorMessage(String(ex));
+        return;
+    }
     if (!projectRoot) {
         void vscode.window.showErrorMessage(
             "No SFMC project config found. Use 'SFMC Data: Initialize Project' or open a folder containing .mcdevrc.json or .mcdatarc.json."
@@ -30,7 +41,7 @@ async function contextExportDE(
     if (!files) return;
     const { parsed, credBu } = files;
 
-    const config = vscode.workspace.getConfiguration('sfmcData');
+    const config = getProjectConfig(projectRoot);
     const format = config.get<string>('defaultFormat') ?? 'csv';
     const isUseGit = config.get<boolean>('useGitFilenames') === true;
     const deKeys = parsed.map((f) => f.deKey);

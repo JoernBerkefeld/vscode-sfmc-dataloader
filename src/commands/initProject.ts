@@ -10,7 +10,9 @@ export function registerInitProjectCommand(context: vscode.ExtensionContext): vo
 }
 
 async function initProject(context: vscode.ExtensionContext): Promise<void> {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
+    const workspaceFolders = vscode.workspace.workspaceFolders?.filter(
+        (folder) => folder.uri.scheme === 'file'
+    );
     if (!workspaceFolders || workspaceFolders.length === 0) {
         void vscode.window.showErrorMessage(
             'SFMC Data: Initialize Project requires an open workspace folder.'
@@ -146,12 +148,13 @@ async function initProject(context: vscode.ExtensionContext): Promise<void> {
         '--yes',
     ];
 
-    await runMcdataWithProgress(context, projectRoot, arguments_, {
+    const outcome = await runMcdataWithProgress(context, projectRoot, arguments_, {
         progressTitle: 'SFMC Data - Initialize Project',
         telemetryCommand: 'sfmc-data.initProject',
+        suppressSuccessNotification: true,
     });
 
-    if (fs.existsSync(mcdataRcPath)) {
+    if (outcome.status === 'success' && fs.existsSync(mcdataRcPath)) {
         const open = 'Open .mcdatarc.json';
         const choice = await vscode.window.showInformationMessage(
             'SFMC Data: Project initialized successfully.',

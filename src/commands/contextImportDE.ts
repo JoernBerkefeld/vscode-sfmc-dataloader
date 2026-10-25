@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { findProjectRoot } from '../config';
+import { selectProjectRoot, getProjectConfiguration as getProjectConfig } from '../config';
 import { runMcdataWithProgress } from '../runMcdata';
 import { buildImportArguments } from '../argbuilder';
 import { resolveContextFiles } from './contextUtilities';
@@ -21,7 +21,18 @@ async function contextImportDE(
     uri: vscode.Uri,
     uris: vscode.Uri[]
 ): Promise<void> {
-    const projectRoot = findProjectRoot(vscode.workspace.workspaceFolders);
+    let projectRoot: string | undefined;
+    try {
+        projectRoot = await selectProjectRoot(
+            vscode.workspace.workspaceFolders,
+            'context',
+            uri,
+            uris
+        );
+    } catch (ex) {
+        void vscode.window.showErrorMessage(String(ex));
+        return;
+    }
     if (!projectRoot) {
         void vscode.window.showErrorMessage(
             "No SFMC project config found. Use 'SFMC Data: Initialize Project' or open a folder containing .mcdevrc.json or .mcdatarc.json."
@@ -29,11 +40,11 @@ async function contextImportDE(
         return;
     }
 
-    const files = resolveContextFiles(uri, uris, projectRoot);
+    const files = resolveContextFiles(uri, uris, projectRoot, true);
     if (!files) return;
     const { parsed, credBu } = files;
 
-    const config = vscode.workspace.getConfiguration('sfmcData');
+    const config = getProjectConfig(projectRoot);
     const isUseGit = config.get<boolean>('useGitFilenames') === true;
 
     const mode = await resolveImportWriteMode(config);
@@ -42,7 +53,8 @@ async function contextImportDE(
     const backupBeforeImport = await resolveBackupBeforeImport(config);
     if (backupBeforeImport === undefined) return;
 
-    const clearChoice = await promptOptionalClearBeforeImport();
+    const clearChoice = await promptOptionalClearBeforeImport(config);
+    if (clearChoice === undefined) return;
 
     let arguments_: string[];
     if (parsed[0].type === 'data') {

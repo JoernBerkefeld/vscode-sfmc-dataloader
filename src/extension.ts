@@ -1,4 +1,5 @@
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { mcdataProcesses, registerMcdataProcessLifecycle } from './mcdataProcessLifecycle';
 import { promisify } from 'node:util';
 import * as vscode from 'vscode';
 import { checkAndShowWhatsNew, showWhatsNewPanel } from './whatsNew';
@@ -12,15 +13,14 @@ import { registerContextImportToBUCommand } from './commands/contextImportToBU';
 import { registerContextExportFromBUsCommand } from './commands/contextExportFromBUs';
 import { registerInitProjectCommand } from './commands/initProject';
 import { registerRefreshDeCacheCommand } from './commands/refreshDeCache';
-import { findProjectRoot } from './config';
-import { buildMcdataShellPrefix, normalizeMcdataSource, type McdataSource } from './mcdataResolve';
-import { buildMcdataShellCommandLine } from './mcdataShellCommand';
+import { findProjectRoot, getProjectConfiguration as getProjectConfig } from './config';
+import { buildMcdataLaunch, normalizeMcdataSource, type McdataSource } from './mcdataResolve';
 import { getProjectFlags } from './projectFlags';
 import { registerSfmcDataOutput } from './sfmcDataOutput';
 import { registerMcdataStatusBar } from './statusBarMcdata';
 import { TelemetryReporter, detectEcosystem, getReporter, setReporter } from './telemetry';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const EXTENSION_DISPLAY_NAME = 'SFMC Data Loader';
 const EXTENSION_TELEMETRY_NAME = 'sfmc-data';
@@ -31,6 +31,7 @@ const MCDATA_VERSION_PATTERN = /\b(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\b/;
 const session = { hasTrackedMcdataVersion: false };
 
 export function activate(context: vscode.ExtensionContext): void {
+    registerMcdataProcessLifecycle(context);
     const reporter = new TelemetryReporter({
         extensionName: EXTENSION_TELEMETRY_NAME,
         extensionVersion: context.extension.packageJSON.version,
@@ -67,32 +68,41 @@ export function activate(context: vscode.ExtensionContext): void {
         ...getProjectFlags(vscode.workspace.workspaceFolders),
         mcdataSource,
     });
-    void trackMcdataVersionOnce(context, mcdataSource);
+    void trackMcdataVersionOnce(context);
 }
 
 export async function deactivate(): Promise<void> {
+    await mcdataProcesses.shutdown();
     await getReporter()?.disposeAsync();
     setReporter(undefined);
 }
 
 /**
  * Emits `mcdata.version` once per session. Does not block activation.
- * Uses `buildMcdataShellPrefix` (equivalent of `resolveMcdataShellPrefix`) so a
+ * Uses `buildMcdataLaunch` (equivalent of `resolveMcdataLaunch`) so a
  * failed lookup never toasts. Version is omitted on failure; paths are never sent.
  * @param context - Extension context used to resolve the bundled CLI path.
- * @param mcdataSource - Normalized `sfmcData.mcdataSource` already sent on activate.
  */
-async function trackMcdataVersionOnce(
-    context: vscode.ExtensionContext,
-    mcdataSource: McdataSource
-): Promise<void> {
-    if (session.hasTrackedMcdataVersion) {
+async function trackMcdataVersionOnce(context: vscode.ExtensionContext): Promise<void> {
+    if (!vscode.env.isTelemetryEnabled || session.hasTrackedMcdataVersion) {
         return;
     }
     session.hasTrackedMcdataVersion = true;
 
+    const projectRoot =
+        findProjectRoot(vscode.workspace.workspaceFolders) ??
+        vscode.workspace.workspaceFolders?.find((folder) => folder.uri.scheme === 'file')?.uri
+            .fsPath ??
+        context.extensionPath;
+    const config = getProjectConfig(projectRoot);
+    const mcdataSource = normalizeMcdataSource(config.get<string>('mcdataSource'));
     const properties: { mcdataSource: McdataSource; mcdataVersion?: string } = { mcdataSource };
-    const version = await lookupMcdataVersion(context, mcdataSource);
+    const version = await lookupMcdataVersion(
+        context,
+        projectRoot,
+        mcdataSource,
+        config.get<string>('mcdataPath') ?? ''
+    );
     if (version) {
         properties.mcdataVersion = version;
     }
@@ -101,31 +111,32 @@ async function trackMcdataVersionOnce(
 
 async function lookupMcdataVersion(
     context: vscode.ExtensionContext,
-    mcdataSource: McdataSource
+    projectRoot: string,
+    mcdataSource: McdataSource,
+    customPath: string
 ): Promise<string | undefined> {
-    const projectRoot =
-        findProjectRoot(vscode.workspace.workspaceFolders) ??
-        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ??
-        context.extensionPath;
-    const customPath = vscode.workspace.getConfiguration('sfmcData').get<string>('mcdataPath');
-    const resolved = buildMcdataShellPrefix({
+    const resolved = await buildMcdataLaunch({
         mcdataSource,
         customPath: customPath ?? '',
         projectRoot,
         extensionPath: context.extensionPath,
     });
-    if ('error' in resolved) {
+    if (!vscode.env.isTelemetryEnabled || 'error' in resolved) {
         return undefined;
     }
 
     try {
-        const commandLine = buildMcdataShellCommandLine(resolved.prefix, ['--version']);
-        const { stdout, stderr } = await execAsync(commandLine, {
-            cwd: projectRoot,
-            timeout: MCDATA_VERSION_TIMEOUT_MS,
-            windowsHide: true,
-            maxBuffer: 64 * 1024,
-        });
+        const { stdout, stderr } = await execFileAsync(
+            resolved.executable,
+            [...resolved.prefixArgs, '--version'],
+            {
+                shell: false,
+                cwd: projectRoot,
+                timeout: MCDATA_VERSION_TIMEOUT_MS,
+                windowsHide: true,
+                maxBuffer: 64 * 1024,
+            }
+        );
         return parseMcdataVersion(stdout) ?? parseMcdataVersion(stderr);
     } catch {
         return undefined;

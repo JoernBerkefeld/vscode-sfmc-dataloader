@@ -5,7 +5,7 @@
  */
 
 import path from 'node:path';
-import { parseExportBasename } from 'sfmc-dataloader';
+import { parseExportBasename, reverseFilterIllegalFilenames } from 'sfmc-dataloader';
 
 export type ParsedContextFile = {
     /**
@@ -50,7 +50,16 @@ export function parseContextFilePath(
 
     // retrieve/<cred>/<bu>/dataExtension/<filename>
     if (parts.length === 5 && parts[0] === 'retrieve' && parts[3] === 'dataExtension') {
-        const deKey = parts[4].split('.', 1)[0];
+        const suffix = ['.dataExtension-meta.json', '.dataExtension-doc.md'].find((ending) =>
+            parts[4].endsWith(ending)
+        );
+        if (!suffix) return undefined;
+        let deKey: string;
+        try {
+            deKey = reverseFilterIllegalFilenames(parts[4].slice(0, -suffix.length));
+        } catch {
+            return undefined;
+        }
         if (!deKey) return undefined;
         return {
             type: 'retrieve',
@@ -65,8 +74,8 @@ export function parseContextFilePath(
     // data/<cred>/<bu>/<export-basename>
     if (parts.length === 4 && parts[0] === 'data') {
         try {
-            const { customerKey: deKey } = parseExportBasename(parts[3]);
-            if (!deKey) return undefined;
+            const { customerKey: deKey, ext } = parseExportBasename(parts[3]);
+            if (!deKey || !['csv', 'tsv', 'json'].includes(ext)) return undefined;
             return {
                 type: 'data',
                 cred: parts[1],

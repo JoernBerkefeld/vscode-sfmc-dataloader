@@ -44,7 +44,9 @@ Right-click any of the following files in the **Explorer**, on an **editor tab**
 - `*.dataExtension-meta.json` or `*.dataExtension-doc.md` under `retrieve/<cred>/<bu>/dataExtension/`
 - Export files under `data/<cred>/<bu>/` whose names contain `.mcdata.` (matches `mcdata` export naming)
 
-You can **multi-select** files within the same BU and all commands will operate on them together.
+You can **multi-select** files within the same project and BU. Imports require either metadata files or data exports, not a mixture; unsupported selections are rejected. Dotted and encoded Data Extension keys are preserved. Dismissing an import confirmation cancels the import; choosing **No** explicitly continues without clearing.
+
+In multi-root workspaces, context commands use the selected file's project. Palette commands offer a project picker when more than one configured project is available. Project settings and cached DE lists remain isolated by project and account/BU identity. Only trusted, on-disk workspace folders are supported.
 
 | Context menu item | retrieve/ files | data/ files |
 |---|---|---|
@@ -53,7 +55,11 @@ You can **multi-select** files within the same BU and all commands will operate 
 | **Import Data** | `mcdata import <cred/bu> --de <key>...` (resolves latest export file) | `mcdata import <cred/bu> --file <path>...` |
 | **Import to BU...** | Multi-select target BUs, runs `mcdata import --from <src> --to <tgt>... --de <key>...` | Multi-select target BUs, runs `mcdata import --to <tgt>... --file <path>...` |
 
-While `mcdata` runs, the extension shows a **cancellable** notification. **Stdout/stderr** stream to the **SFMC Data Loader** output channel. When the run finishes, a short **success or error** toast appears; choose **More Details** to focus that log (same pattern as SFMC DevTools).
+While `mcdata` runs, the extension shows a **cancellable** notification. **Stdout/stderr** stream to the **SFMC Data Loader** output channel. Success is reported only after successful execution; cancellation and failures do not report success. Choose **More Details** to focus the log.
+
+Launches pass arguments without shell interpretation. Recognized Windows npm `.cmd` shims run directly through Node.js; unsupported shell wrappers are rejected. Node/PATH probes are asynchronous and time-bounded. Command displays mask credential arguments, but credentials passed as arguments may still be visible to local process-inspection tools. Debug files can contain business data and are not automatically safe to share, especially with older or custom CLIs.
+
+Cancellation does not roll back API work already submitted. On Windows, a custom launcher that starts the loader and exits first can leave its descendant running; cancellation of that orphaned process is not guaranteed.
 
 ## Settings
 

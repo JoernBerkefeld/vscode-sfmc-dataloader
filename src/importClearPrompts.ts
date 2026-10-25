@@ -3,13 +3,12 @@ import * as vscode from 'vscode';
 /**
  * When `sfmcData.promptClearBeforeImport` is enabled, asks at the end of an
  * import flow whether to clear target DE rows (two-step: QuickPick + modal).
- * @returns {Promise<{ clearBeforeImport: boolean; acceptClearRisk: boolean }>} flags for mcdata clear-before-import options
+ * @param config - Settings captured for the selected project.
+ * @returns {Promise<{ clearBeforeImport: boolean; acceptClearRisk: boolean } | undefined>} Clear flags, or undefined when the import is cancelled.
  */
-export async function promptOptionalClearBeforeImport(): Promise<{
-    clearBeforeImport: boolean;
-    acceptClearRisk: boolean;
-}> {
-    const config = vscode.workspace.getConfiguration('sfmcData');
+export async function promptOptionalClearBeforeImport(
+    config: vscode.WorkspaceConfiguration
+): Promise<{ clearBeforeImport: boolean; acceptClearRisk: boolean } | undefined> {
     if (!config.get<boolean>('promptClearBeforeImport')) {
         return { clearBeforeImport: false, acceptClearRisk: false };
     }
@@ -25,7 +24,8 @@ export async function promptOptionalClearBeforeImport(): Promise<{
         }
     );
 
-    if (!pick?.clear) {
+    if (pick === undefined) return undefined;
+    if (!pick.clear) {
         return { clearBeforeImport: false, acceptClearRisk: false };
     }
 
@@ -39,9 +39,7 @@ export async function promptOptionalClearBeforeImport(): Promise<{
         'I understand — continue'
     );
 
-    if (confirm !== 'I understand — continue') {
-        return { clearBeforeImport: false, acceptClearRisk: false };
-    }
+    if (confirm !== 'I understand — continue') return undefined;
 
     return { clearBeforeImport: true, acceptClearRisk: true };
 }

@@ -10,6 +10,8 @@ declare module 'sfmc-dataloader' {
         ext: string;
     };
 
+    export function reverseFilterIllegalFilenames(filename: string): string;
+
     export function fetchDeList(
         projectRoot: string,
         credential: string,

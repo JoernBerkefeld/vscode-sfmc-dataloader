@@ -1,9 +1,12 @@
-import { spawn } from 'node:child_process';
+import { mcdataProcesses, type McdataProcessOutcome } from './mcdataProcessLifecycle';
+import { getProjectConfiguration as getProjectConfig } from './config';
+import { StringDecoder } from 'node:string_decoder';
 import * as vscode from 'vscode';
 import { mapMcdataRunStatus, trackCommandOutcome } from './commandTelemetry';
 import { appendMcdataDebugArgument } from './mcdataDebugArguments';
-import { resolveMcdataShellPrefix } from './mcdataPrefix';
-import { buildMcdataShellCommandLine } from './mcdataShellCommand';
+import { resolveMcdataLaunch } from './mcdataPrefix';
+import { buildMcdataCommandDisplay } from './mcdataShellCommand';
+import type { McdataLaunch } from './mcdataResolve';
 import { getSfmcDataOutputChannel } from './sfmcDataOutput';
 import { getReporter } from './telemetry';
 
@@ -12,11 +15,7 @@ import { getReporter } from './telemetry';
  */
 const MORE_DETAILS = 'More Details';
 
-export type McdataRunOutcome =
-    | { status: 'success' }
-    | { status: 'failed'; exitCode: number | null }
-    | { status: 'cancelled' }
-    | { status: 'spawn_error'; message: string; error?: Error };
+export type McdataRunOutcome = McdataProcessOutcome | { status: 'resolution_failed' };
 
 /**
  * Runs `mcdata` in a subprocess (no integrated terminal), logs to the extension output channel,
@@ -28,31 +27,39 @@ export type McdataRunOutcome =
  * @param options - notification UI and telemetry options
  * @param options.progressTitle - title shown on the cancellable progress notification
  * @param options.telemetryCommand - VS Code command id for command.executed / command.failed
- * @returns {Promise<void>}
+ * @param options.suppressSuccessNotification - Lets init own its single actionable success notification.
+ * @returns {Promise<McdataRunOutcome>} Actual process result, or resolution failure.
  */
 export async function runMcdataWithProgress(
     context: vscode.ExtensionContext,
     projectRoot: string,
     arguments_: string[],
-    options: { progressTitle: string; telemetryCommand: string }
-): Promise<void> {
+    options: {
+        progressTitle: string;
+        telemetryCommand: string;
+        suppressSuccessNotification?: boolean;
+    }
+): Promise<McdataRunOutcome> {
     const startedAt = Date.now();
-    const prefix = resolveMcdataShellPrefix(context, projectRoot);
+    const prefix = await resolveMcdataLaunch(context, projectRoot);
     if (prefix === undefined) {
         trackCommandOutcome(getReporter(), options.telemetryCommand, 'mcdataPrefixMissing', {
             durationMs: Date.now() - startedAt,
         });
-        return;
+        return { status: 'resolution_failed' };
     }
 
-    const config = vscode.workspace.getConfiguration('sfmcData');
+    const config = getProjectConfig(projectRoot);
     const isCreateDebugLog = config.get<boolean>('createDebugLog') === true;
     const finalArguments = appendMcdataDebugArgument(arguments_, isCreateDebugLog);
 
-    const commandLine = buildMcdataShellCommandLine(prefix, finalArguments);
+    const diagnostics = createSafeDiagnostics([...prefix.prefixArgs, ...finalArguments]);
+    const commandLine = diagnostics.redact(
+        buildMcdataCommandDisplay(prefix, diagnostics.display(finalArguments))
+    );
     const outputChannel = getSfmcDataOutputChannel();
 
-    const outcome = await vscode.window.withProgress<McdataRunOutcome>(
+    const outcome = await vscode.window.withProgress<McdataProcessOutcome>(
         {
             location: vscode.ProgressLocation.Notification,
             title: options.progressTitle,
@@ -62,7 +69,14 @@ export async function runMcdataWithProgress(
             progress.report({ message: 'Running mcdata…' });
             outputChannel.appendLine(`⚡ ${commandLine}`);
             outputChannel.appendLine('');
-            return executeMcdataShell(projectRoot, commandLine, outputChannel, token, progress);
+            return executeMcdata(
+                projectRoot,
+                prefix,
+                finalArguments,
+                outputChannel,
+                token,
+                progress
+            );
         }
     );
 
@@ -87,6 +101,7 @@ export async function runMcdataWithProgress(
 
     switch (outcome.status) {
         case 'success': {
+            if (options.suppressSuccessNotification) break;
             const choice = await vscode.window.showInformationMessage(
                 'SFMC Data Loader: mcdata finished successfully.',
                 MORE_DETAILS
@@ -128,6 +143,7 @@ export async function runMcdataWithProgress(
             break;
         }
     }
+    return outcome;
 }
 
 /**
@@ -146,90 +162,166 @@ export function createBatchProgressLineHandler(
     };
 }
 
-function appendStreamLine(
-    chunk: Buffer,
-    buffer: { value: string },
-    onLine: (line: string) => void
-): void {
-    buffer.value += chunk.toString();
-    const lines = buffer.value.split(/\r?\n/);
-    buffer.value = lines.pop() ?? '';
-    for (const line of lines) {
-        onLine(line);
-    }
+/**
+Retains only a bounded tail even when a custom CLI never writes a newline.
+ * @param onLine - Receives complete lines or bounded partial-line windows.
+ * @returns {object} Bounded parser with append, flush and retained-state inspection.
+ */
+export function createBoundedProgressParser(onLine: (line: string) => void) {
+    const limit = 1024;
+    let pending = '';
+    return {
+        get retainedLength() {
+            return pending.length;
+        },
+        append(text: string): void {
+            // Scan fixed-size slices, not an ever-growing accumulated line.
+            for (let offset = 0; offset < text.length; offset += limit) {
+                const lines = (pending + text.slice(offset, offset + limit)).split(/\r?\n/);
+                pending = lines.pop() ?? '';
+                for (const line of lines) onLine(line);
+                if (pending.length > limit) {
+                    onLine(pending);
+                    pending = pending.slice(-limit);
+                }
+            }
+        },
+        flush(): void {
+            if (pending) onLine(pending);
+            pending = '';
+        },
+    };
 }
 
-function flushStreamBuffer(buffer: { value: string }, onLine: (line: string) => void): void {
-    if (!(buffer.value.length > 0)) {
-        return;
-    }
+const SENSITIVE_FLAGS = new Set(['--client-id', '--client-secret']);
 
-    onLine(buffer.value);
-    buffer.value = '';
+function display(values: string[]): string[] {
+    let isHideNext = false;
+    return values.map((value) => {
+        if (isHideNext) {
+            isHideNext = false;
+            return '[REDACTED]';
+        }
+        const equal = value.indexOf('=');
+        const flag = equal === -1 ? value : value.slice(0, equal);
+        if (!SENSITIVE_FLAGS.has(flag)) return value;
+        if (equal !== -1) return `${flag}=[REDACTED]`;
+        isHideNext = true;
+        return value;
+    });
 }
 
-function executeMcdataShell(
+function createSafeDiagnostics(arguments_: string[]) {
+    const secrets: string[] = [];
+    for (let index = 0; index < arguments_.length; index++) {
+        const value = arguments_[index];
+        const equal = value.indexOf('=');
+        if (SENSITIVE_FLAGS.has(equal === -1 ? value : value.slice(0, equal))) {
+            const secret = equal === -1 ? arguments_[++index] : value.slice(equal + 1);
+            if (secret) secrets.push(secret);
+        }
+    }
+    const variants = [
+        ...new Set(secrets.flatMap((secret) => [secret, JSON.stringify(secret).slice(1, -1)])),
+    ].toSorted((left, right) => right.length - left.length);
+    return {
+        display,
+        variants,
+        redact: (text: string): string => {
+            for (const secret of variants) text = text.replaceAll(secret, '[REDACTED]');
+            return text;
+        },
+    };
+}
+
+function createSafeStream(
+    diagnostics: ReturnType<typeof createSafeDiagnostics>,
+    append: (text: string) => void
+) {
+    const decoder = new StringDecoder('utf8');
+    let pending = '';
+    const drain = (isFlush: boolean): void => {
+        let offset = 0;
+        const output: string[] = [];
+        while (offset < pending.length) {
+            const secret = diagnostics.variants.find((value) => pending.startsWith(value, offset));
+            if (secret) {
+                output.push('[REDACTED]');
+                offset += secret.length;
+            } else {
+                if (
+                    !isFlush &&
+                    diagnostics.variants.some(
+                        (value) =>
+                            value.length > pending.length - offset &&
+                            value.startsWith(pending.slice(offset))
+                    )
+                )
+                    break;
+                output.push(pending[offset++]);
+            }
+        }
+        append(output.join(''));
+        pending = pending.slice(offset);
+    };
+    return {
+        append(chunk: Buffer): void {
+            pending += decoder.write(chunk);
+            drain(false);
+        },
+        flush(): void {
+            pending += decoder.end();
+            drain(true);
+        },
+    };
+}
+
+async function executeMcdata(
     cwd: string,
-    commandLine: string,
+    launch: McdataLaunch,
+    arguments_: string[],
     channel: vscode.OutputChannel,
     token: vscode.CancellationToken,
     progress: vscode.Progress<{ message?: string; increment?: number }>
-): Promise<McdataRunOutcome> {
-    return new Promise((resolve) => {
-        const child = spawn(commandLine, {
-            cwd,
-            shell: true,
-            windowsHide: true,
-        });
-
-        const cancellation = token.onCancellationRequested(() => {
-            child.kill();
-        });
-
-        let isSettled = false;
-        const finish = (outcome: McdataRunOutcome): void => {
-            if (isSettled) {
-                return;
-            }
-            isSettled = true;
-            cancellation.dispose();
-            resolve(outcome);
-        };
-
-        const stdoutBuffer = { value: '' };
-        const stderrBuffer = { value: '' };
-        const reportBatchFromLine = createBatchProgressLineHandler(progress);
-
-        child.stdout?.on('data', (chunk: Buffer) => {
-            const text = chunk.toString();
-            channel.append(text);
-            appendStreamLine(chunk, stdoutBuffer, reportBatchFromLine);
-        });
-        child.stderr?.on('data', (chunk: Buffer) => {
-            const text = chunk.toString();
-            channel.append(text);
-            appendStreamLine(chunk, stderrBuffer, reportBatchFromLine);
-        });
-
-        child.on('error', (error: Error) => {
-            channel.appendLine(String(error));
-            finish({ status: 'spawn_error', message: error.message, error });
-        });
-
-        child.on('close', (code: number | null) => {
-            flushStreamBuffer(stdoutBuffer, reportBatchFromLine);
-            flushStreamBuffer(stderrBuffer, reportBatchFromLine);
-            if (token.isCancellationRequested) {
-                channel.appendLine('');
-                channel.appendLine('Process cancelled by user.');
-                finish({ status: 'cancelled' });
-                return;
-            }
-            if (code === 0) {
-                finish({ status: 'success' });
-            } else {
-                finish({ status: 'failed', exitCode: code });
-            }
-        });
+): Promise<McdataProcessOutcome> {
+    const diagnostics = createSafeDiagnostics([...launch.prefixArgs, ...arguments_]);
+    const reportBatchFromLine = createBatchProgressLineHandler({
+        report: (value) =>
+            progress.report({
+                ...value,
+                message: value.message && diagnostics.redact(value.message),
+            }),
     });
+    const stdoutParser = createBoundedProgressParser(reportBatchFromLine);
+    const stderrParser = createBoundedProgressParser(reportBatchFromLine);
+    const stdout = createSafeStream(diagnostics, (text) => {
+        channel.append(text);
+        stdoutParser.append(text);
+    });
+    const stderr = createSafeStream(diagnostics, (text) => {
+        channel.append(text);
+        stderrParser.append(text);
+    });
+    const outcome = await mcdataProcesses.run({
+        cwd,
+        launch,
+        arguments: arguments_,
+        token,
+        onStdout: stdout.append,
+        onStderr: stderr.append,
+    });
+    stdout.flush();
+    stderr.flush();
+    stdoutParser.flush();
+    stderrParser.flush();
+    if (outcome.status === 'cancelled') {
+        channel.appendLine('');
+        channel.appendLine('Local process cancelled. Remote work already submitted may continue.');
+    } else if (outcome.status === 'spawn_error') {
+        const message = diagnostics.redact(outcome.message);
+        channel.appendLine(message);
+        // Never return the original Error: its stack/cause can contain raw argv.
+        return { status: 'spawn_error', message, error: new Error(message) };
+    }
+    return outcome;
 }

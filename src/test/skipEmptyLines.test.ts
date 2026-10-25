@@ -112,7 +112,11 @@ describe('skipEmptyLines import command routes', () => {
                 };
                 const dependencies: Record<string, unknown> = {
                     vscode: host,
-                    '../config': { findProjectRoot: () => root, readProjectConfig: () => ({}) },
+                    '../config': {
+                        selectProjectRoot: async () => root,
+                        getProjectConfiguration: host.workspace.getConfiguration,
+                        readProjectConfig: () => ({}),
+                    },
                     '../mcdevrcParser': {
                         getCredentials: () => ['org'],
                         getBusinessUnits: () => ['bu'],

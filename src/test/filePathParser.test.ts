@@ -46,6 +46,41 @@ describe('parseContextFilePath — retrieve files', () => {
         assert.equal(result.credBu, 'MyCred/MyBU');
     });
 
+    for (const suffix of ['.dataExtension-meta.json', '.dataExtension-doc.md']) {
+        it(`preserves dotted keys and decodes loader filename escapes for ${suffix}`, () => {
+            const result = parseContextFilePath(
+                abs(
+                    'retrieve',
+                    'MyCred',
+                    'MyBU',
+                    'dataExtension',
+                    `Orders.v2%2FItem_STAR_${suffix}`
+                ),
+                ROOT
+            );
+            assert.equal(result?.deKey, 'Orders.v2/Item*');
+        });
+    }
+
+    for (const filename of [
+        'Orders.json',
+        'Orders.dataExtension-meta.json.bak',
+        'Orders.dataExtension-doc.md.bak',
+        '.dataExtension-meta.json',
+        'Bad%ZZ.dataExtension-meta.json',
+        'Bad%E0%A4%A.dataExtension-doc.md',
+    ]) {
+        it(`rejects unrelated or malformed metadata filename ${filename}`, () => {
+            assert.equal(
+                parseContextFilePath(
+                    abs('retrieve', 'MyCred', 'MyBU', 'dataExtension', filename),
+                    ROOT
+                ),
+                undefined
+            );
+        });
+    }
+
     it('returns undefined for a retrieve file outside dataExtension folder', () => {
         const result = parseContextFilePath(
             abs('retrieve', 'MyCred', 'MyBU', 'emailSend', 'some.emailSend-meta.json'),
@@ -99,6 +134,15 @@ describe('parseContextFilePath — data files', () => {
         const result = parseContextFilePath(abs('data', 'MyCred', 'MyBU', 'Contact_DE.csv'), ROOT);
         assert.equal(result, undefined);
     });
+
+    for (const filename of ['Orders.mcdata.exe', 'Bad%ZZ.mcdata.csv']) {
+        it(`rejects unsupported or malformed data filename ${filename}`, () => {
+            assert.equal(
+                parseContextFilePath(abs('data', 'MyCred', 'MyBU', filename), ROOT),
+                undefined
+            );
+        });
+    }
 
     it('returns undefined for a file one level too deep in data/', () => {
         const result = parseContextFilePath(
