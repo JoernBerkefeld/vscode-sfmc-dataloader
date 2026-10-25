@@ -38,11 +38,13 @@ type Route = (typeof routes)[number];
  * Composes real project/settings helpers and command logic with host/network I/O mocked.
  * @param route - Command module and registration.
  * @param scenario - Resource/picker invocation to simulate.
+ * @param malformedConfig - Public config filename to populate with invalid, sensitive JSON.
  * @returns {Promise<object>} Captured project, settings, executions and errors.
  */
 async function invoke(
     route: Route,
-    scenario: 'explicit' | 'active' | 'cross' | 'virtual' | 'cancel' | 'sole'
+    scenario: 'explicit' | 'active' | 'cross' | 'virtual' | 'cancel' | 'sole',
+    malformedConfig?: '.mcdevrc.json' | '.mcdatarc.json'
 ) {
     const [file, registration, isContext] = route;
     const root = folders[1].uri.fsPath;
@@ -163,22 +165,24 @@ async function invoke(
     const paths = modules.map((name) => require.resolve(name));
     for (const modulePath of paths) delete require.cache[modulePath];
     const originalRead = filesystem.readFileSync;
+    const publicFilename = malformedConfig ?? '.mcdevrc.json';
+    const sentinel = 'SECRET_JSON_SENTINEL_DO_NOT_DISCLOSE';
     const replacements = [
         mock.method(
             filesystem,
             'existsSync',
             (filename: string) =>
-                filename === path.join(root, '.mcdevrc.json') ||
+                filename === path.join(root, publicFilename) ||
                 (scenario !== 'sole' &&
-                    filename === path.join(folders[0].uri.fsPath, '.mcdevrc.json'))
+                    filename === path.join(folders[0].uri.fsPath, publicFilename))
         ),
         mock.method(filesystem, 'readFileSync', (filename: string, ...arguments_: unknown[]) => {
-            if (!filename.endsWith('.mcdevrc.json')) {
+            if (!filename.endsWith(publicFilename)) {
                 return Reflect.apply(originalRead, filesystem, [filename, ...arguments_]);
             }
             reads.push(filename);
-            assert.equal(filename, path.join(root, '.mcdevrc.json'));
-            return JSON.stringify(config);
+            assert.equal(filename, path.join(root, publicFilename));
+            return malformedConfig ? `{"${sentinel}":}` : JSON.stringify(config);
         }),
         mock.method(
             loadable,
@@ -209,6 +213,23 @@ async function invoke(
 
 describe('commands composed with real project selection and folder settings', () => {
     for (const route of routes) {
+        if (route[0] === 'exportDE' || route[0] === 'refreshDeCache') {
+            for (const filename of ['.mcdevrc.json', '.mcdatarc.json'] as const) {
+                it(`${route[0]} reports filename-only errors for malformed ${filename}`, async () => {
+                    const result = await invoke(route, 'sole', filename);
+                    assert.deepEqual(result.errors, [
+                        `Failed to read project config: Error: Invalid JSON in ${filename}. Fix the file and try again.`,
+                    ]);
+                    assert.ok(
+                        !result.errors.join('\n').includes('SECRET_JSON_SENTINEL_DO_NOT_DISCLOSE')
+                    );
+                    assert.deepEqual(result.reads, [path.join(result.root, filename)]);
+                    assert.deepEqual(result.runs, []);
+                    assert.deepEqual(result.fetches, []);
+                    assert.deepEqual(result.settings, []);
+                });
+            }
+        }
         const successfulScenarios = route[2]
             ? (['explicit', 'active'] as const)
             : (['explicit', 'sole'] as const);

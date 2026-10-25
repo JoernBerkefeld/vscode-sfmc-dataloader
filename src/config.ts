@@ -117,12 +117,15 @@ export function getProjectConfiguration(projectRoot: string): vscode.WorkspaceCo
  * @throws {Error} if neither config file exists or contains invalid JSON
  */
 export function readProjectConfig(projectRoot: string): Mcdevrc {
-    const mcdevRcPath = path.join(projectRoot, FILE_MCDEV_RC);
-    if (fs.existsSync(mcdevRcPath)) {
-        return JSON.parse(fs.readFileSync(mcdevRcPath, 'utf8')) as Mcdevrc;
+    const filename = fs.existsSync(path.join(projectRoot, FILE_MCDEV_RC))
+        ? FILE_MCDEV_RC
+        : FILE_MCDATA_RC;
+    const contents = fs.readFileSync(path.join(projectRoot, filename), 'utf8');
+    try {
+        return JSON.parse(contents) as Mcdevrc;
+    } catch {
+        throw new Error(`Invalid JSON in ${filename}. Fix the file and try again.`);
     }
-    const mcdataRcPath = path.join(projectRoot, FILE_MCDATA_RC);
-    return JSON.parse(fs.readFileSync(mcdataRcPath, 'utf8')) as Mcdevrc;
 }
 
 /**

@@ -71,6 +71,18 @@ it(
             define: { 'import.meta.url': '""' },
             logLevel: 'silent',
         });
+        const exportHelper = path.join(runRoot, 'export.cjs');
+        buildSync({
+            entryPoints: [path.join(extensionRoot, 'src', 'commands', 'exportDE.ts')],
+            bundle: true,
+            platform: 'node',
+            format: 'cjs',
+            outfile: exportHelper,
+            external: ['vscode'],
+            alias: { 'sfmc-dataloader': path.join(loaderRoot, 'lib', 'index.mjs') },
+            define: { 'import.meta.url': '""' },
+            logLevel: 'silent',
+        });
         const checkCache = path.join(runRoot, 'check-cache.cjs');
         writeFileSync(
             checkCache,
@@ -79,6 +91,34 @@ const { fetchAndStoreDeCache } = require(${JSON.stringify(helper)});
 (async () => {
     await assert.rejects(fetchAndStoreDeCache({ projectRoot: process.argv[2], credential: 'org', bu: 'bu' }),
         error => { assert.equal(error.message, process.argv[3]); return true; });
+})().catch(error => { console.error(error); process.exitCode = 1; });
+`
+        );
+        const checkCommands = path.join(runRoot, 'check-commands.cjs');
+        writeFileSync(
+            checkCommands,
+            `const assert = require('node:assert/strict');
+const Module = require('node:module');
+const errors = [];
+let command;
+const host = {
+    workspace: { workspaceFolders: [{ uri: { scheme: 'file', fsPath: process.argv[2] } }] },
+    commands: { registerCommand: (_id, callback) => { command = callback; return { dispose() {} }; } },
+    window: { showErrorMessage: message => { errors.push(message); } }
+};
+const original = Module._load;
+Module._load = function(request, parent, isMain) {
+    return request === 'vscode' ? host : original.call(this, request, parent, isMain);
+};
+(async () => {
+    for (const [file, registration] of [
+        [${JSON.stringify(helper)}, 'registerRefreshDeCacheCommand'],
+        [${JSON.stringify(exportHelper)}, 'registerExportCommand']
+    ]) {
+        require(file)[registration]({ subscriptions: [] });
+        await command();
+        assert.equal(errors.pop(), 'Failed to read project config: Error: ' + process.argv[3]);
+    }
 })().catch(error => { console.error(error); process.exitCode = 1; });
 `
         );
@@ -138,6 +178,15 @@ const { fetchAndStoreDeCache } = require(${JSON.stringify(helper)});
                     { encoding: 'utf8', timeout: 30_000 }
                 );
                 assert.equal(cache.status, 0, cache.stderr);
+                if (malformed === 'public') {
+                    const commands = spawnSync(
+                        process.execPath,
+                        [checkCommands, project, message],
+                        { encoding: 'utf8', timeout: 30_000 }
+                    );
+                    assert.equal(commands.status, 0, commands.stderr);
+                    assert.ok(!`${commands.stdout}\n${commands.stderr}`.includes(sentinel));
+                }
                 for (const arguments_ of [
                     ['export', 'org/bu', '--de', 'fixture'],
                     ['import', 'org/bu', '--de', 'fixture', '--no-backup-before-import'],
