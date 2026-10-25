@@ -13,6 +13,11 @@ export default tseslint.config(
     eslintPluginPrettierRecommended,
     jsdoc.configs['flat/recommended'],
     eslintPluginUnicorn.configs.recommended,
+    {
+        rules: {
+            'unicorn/no-asterisk-prefix-in-documentation-comments': 'off',
+        },
+    },
     ...tseslint.configs.recommended,
     {
         languageOptions: {
