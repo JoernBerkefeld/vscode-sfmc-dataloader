@@ -133,9 +133,9 @@ export async function runMcdataWithProgress(
 /**
  * Matches export (stdout) and import (stderr) batch lines from mcdata.
  */
-const BATCH_PROGRESS = /\b((?:Downloading|Uploading) batch \d+ of \d+)\b/;
+const BATCH_PROGRESS = /\b(Downloading batch \d+ of \d+|Uploading batch \d+(?: of \d+)?)\b/;
 
-function createBatchProgressLineHandler(
+export function createBatchProgressLineHandler(
     progress: vscode.Progress<{ message?: string; increment?: number }>
 ): (line: string) => void {
     return (line: string) => {
