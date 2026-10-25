@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.1.0] — 2026-10-25
+
+### Added
+
+- Optional `sfmcData.skipEmptyLines` setting (default `false`) skips empty CSV/TSV records on all import routes without affecting exports or JSON imports.
+
+### Fixed
+
+- Keep import progress indeterminate when the CLI reports upload batches without a total, while preserving legacy upload and download totals.
+
+### Dependencies
+
+- Update bundled `sfmc-dataloader` from 3.0.0 to 3.1.0.
+
 ## [2.0.0] — 2026-10-14
 
 ### Breaking Changes

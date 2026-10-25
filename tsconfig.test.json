@@ -29,7 +29,11 @@
         "src/telemetry.ts",
         "src/commandTelemetry.ts",
         "src/projectFlags.ts",
-        "src/test"
+        "src/test",
+        "src/commands/importDE.ts",
+        "src/commands/importDECrossBU.ts",
+        "src/commands/contextImportDE.ts",
+        "src/commands/contextImportToBU.ts"
     ],
     "exclude": ["node_modules", "out"]
 }

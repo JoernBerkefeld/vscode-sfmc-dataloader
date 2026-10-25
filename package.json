@@ -52,7 +52,7 @@
         "husky": "^9.1.7",
         "lint-staged": "^17.3.0",
         "prettier": "^3.9.6",
-        "sfmc-dataloader": "^3.0.0",
+        "sfmc-dataloader": "^3.1.0",
         "typescript": "^5.9.3",
         "typescript-eslint": "^8.67.0"
     },
@@ -249,6 +249,11 @@
                     "type": "boolean",
                     "default": true,
                     "description": "When true, prompt for upsert vs insert before the optional clear-before-import step; when false, use import mode from settings only."
+                },
+                "sfmcData.skipEmptyLines": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Skip empty CSV/TSV records during imports (--skip-empty-lines). Does not affect exports or JSON imports."
                 },
                 "sfmcData.importMode": {
                     "type": "string",

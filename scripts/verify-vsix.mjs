@@ -54,16 +54,28 @@ await new Promise((resolve, reject) => {
 });
 const cli = path.join(temporary, 'extension/out/mcdata.bundled.cjs');
 const manifest = JSON.parse(readFileSync(path.join(temporary, 'extension/package.json'), 'utf8'));
-assert.equal(manifest.version, '2.0.0');
-assert.equal(manifest.devDependencies['sfmc-dataloader'], '^3.0.0');
+assert.equal(manifest.version, '2.1.0');
+assert.equal(manifest.devDependencies['sfmc-dataloader'], '^3.1.0');
 assert.equal(manifest.engines.vscode, '^1.101.0');
 assert.equal(
+    manifest.contributes.configuration.properties['sfmcData.skipEmptyLines'].type,
+    'boolean'
+);
+assert.equal(
+    manifest.contributes.configuration.properties['sfmcData.skipEmptyLines'].default,
+    false
+);
+assert.equal(
     execFileSync(process.execPath, [cli, '--version'], { cwd: temporary, encoding: 'utf8' }).trim(),
-    '3.0.0'
+    '3.1.0'
 );
 assert.match(
     execFileSync(process.execPath, [cli, '--help'], { cwd: temporary, encoding: 'utf8' }),
     /export/
+);
+assert.match(
+    execFileSync(process.execPath, [cli, 'import', '--help'], { cwd: temporary, encoding: 'utf8' }),
+    /--skip-empty-lines/
 );
 for (const directory of [temporary, path.join(temporary, 'nested project')]) {
     mkdirSync(directory, { recursive: true });
