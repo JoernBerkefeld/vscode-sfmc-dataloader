@@ -102,6 +102,14 @@ Events are keyed by VS Code's anonymous machine id only. The full catalogue ship
 
 **Opt out:** telemetry is gated **solely** by VS Code's global telemetry setting. Set `telemetry.telemetryLevel` to `off` and nothing is sent — the extension respects `isTelemetryEnabled` and stops immediately when you change it. There is no separate extension setting to configure.
 
+## Loader compatibility regression
+
+Before adopting a new loader release, compile the extension and run its normal test suite. To additionally exercise an unreleased loader, pack that loader with `npm pack --ignore-scripts --no-workspaces` into a fresh OS-temp directory and install the tarball into a separate fixture directory using `npm install --prefix <fixture> <tarball> --ignore-scripts --omit=optional --no-workspaces`. Verify the packed package is `sfmc-dataloader` from the intended source revision. Do not replace the extension's installed dependency or commit local tarball dependency specs.
+
+Set `SFMC_DATALOADER_COMPAT_FIXTURE` to the absolute fixture directory before `npm test --no-workspaces`. The opt-in regression bundles the real DE-cache helper and runs the existing CLI bundler against that installed package. It checks filename-only malformed public/auth JSON errors for both config families, unsuccessful import/export exit codes, and absence of a secret sentinel without contacting an org. It requires the upcoming `loadPublicProjectConfig` export; published 3.1.1 alone is not evidence for that change. Temporary evidence is retained for inspection, without recursive cleanup. Without the environment variable, this additional regression is explicitly skipped.
+
+This fixture check does not upgrade the shipped loader. Registry dependency adoption and production bundle rebuild must follow loader publication; VSIX verification, Extension Development Host checks, and user acceptance of the packaged extension remain separate release gates. Workspace/PATH/custom CLI installations remain user-managed.
+
 ## Release Notes
 
 See [CHANGELOG.md](./CHANGELOG.md).
