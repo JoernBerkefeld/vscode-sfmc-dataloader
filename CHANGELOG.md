@@ -14,6 +14,10 @@
 
 - Declare virtual and untrusted workspaces unsupported. Cancellation does not roll back submitted API work; Windows custom launchers that exit before their loader child remain a cancellation limitation.
 
+### Dependencies
+
+- Update bundled `sfmc-dataloader` from 3.1.0 to 3.1.1 for authentication diagnostic redaction, truthful async completion, and validation of explicit export-file selections.
+
 ## [2.1.0] — 2026-10-25
 
 ### Added

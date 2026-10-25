@@ -54,8 +54,8 @@ await new Promise((resolve, reject) => {
 });
 const cli = path.join(temporary, 'extension/out/mcdata.bundled.cjs');
 const manifest = JSON.parse(readFileSync(path.join(temporary, 'extension/package.json'), 'utf8'));
-assert.equal(manifest.version, '2.1.0');
-assert.equal(manifest.devDependencies['sfmc-dataloader'], '^3.1.0');
+assert.equal(manifest.version, '2.1.1');
+assert.equal(manifest.devDependencies['sfmc-dataloader'], '^3.1.1');
 assert.equal(manifest.engines.vscode, '^1.101.0');
 assert.equal(
     manifest.contributes.configuration.properties['sfmcData.skipEmptyLines'].type,
@@ -67,7 +67,7 @@ assert.equal(
 );
 assert.equal(
     execFileSync(process.execPath, [cli, '--version'], { cwd: temporary, encoding: 'utf8' }).trim(),
-    '3.1.0'
+    '3.1.1'
 );
 assert.match(
     execFileSync(process.execPath, [cli, '--help'], { cwd: temporary, encoding: 'utf8' }),
