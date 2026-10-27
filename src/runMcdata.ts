@@ -67,10 +67,11 @@ export async function runMcdataWithProgress(
     const outputChannel = getSfmcDataOutputChannel();
 
     const run = beginMcdataRun();
-    const runLabel = `${run.tag} ${buildMcdataRunContext(projectRoot, finalArguments, diagnostics.redact)}`;
+    const runContext = buildMcdataRunContext(projectRoot, finalArguments, diagnostics.redact);
+    const runLabel = `${run.tag} ${runContext}`;
     const runOutput = createTaggedMcdataOutput(outputChannel, run.tag);
     let outcome: McdataProcessOutcome;
-    runOutput.appendLine(`START ${runLabel} — ${diagnostics.redact(options.progressTitle)}`);
+    runOutput.appendLine(`START ${runContext} — ${diagnostics.redact(options.progressTitle)}`);
     runOutput.appendLine(commandLine);
     try {
         outcome = await vscode.window.withProgress<McdataProcessOutcome>(
@@ -91,7 +92,7 @@ export async function runMcdataWithProgress(
                 );
             }
         );
-        runOutput.appendLine(`END ${runLabel} — ${outcome.status}`);
+        runOutput.appendLine(`END ${runContext} — ${outcome.status}`);
     } finally {
         run.dispose();
     }

@@ -4,7 +4,11 @@ import Module from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
 import type * as vscode from 'vscode';
-import type { McdataProcessOutcome } from '../mcdataProcessLifecycle';
+import { EventEmitter } from 'node:events';
+import { PassThrough } from 'node:stream';
+import type { ChildProcess } from 'node:child_process';
+import { McdataProcessLifecycle, type McdataProcessOutcome } from '../mcdataProcessLifecycle';
+import { buildMcdataCommandDisplay } from '../mcdataShellCommand';
 import {
     buildMcdataRunContext,
     createBatchProgressLineHandler,
@@ -220,6 +224,171 @@ describe('init composed with the real run helper', () => {
 
 it('redacts equals-form sensitive flags in output and failure diagnostics without changing argv', async () => {
     await invoke({ status: 'spawn_error', message: 'synthetic' }, true, true);
+});
+
+it('composes logical previews with literal shell-free launches and both output streams', async () => {
+    const root = path.resolve('synthetic-export-project');
+    const launch = {
+        executable: process.execPath,
+        prefixArgs: ['/internal bundle/mcdata.bundled.cjs'],
+    };
+    const arguments_ = [
+        'export',
+        'R1/DEV',
+        '--format',
+        'csv',
+        '--git',
+        '--de',
+        'MCV_Talent_Details',
+    ];
+    const logs: string[] = [];
+    const reports: { message?: string }[] = [];
+    const progressTitles: string[] = [];
+    const notifications: string[] = [];
+    const displayed: string[][] = [];
+    const spawned: string[][] = [];
+    const secret = 'private"value';
+    const manager = new McdataProcessLifecycle({
+        spawn: (executable, argv, settings) => {
+            assert.equal(executable, launch.executable);
+            assert.equal(settings.shell, false);
+            assert.equal(settings.cwd, root);
+            spawned.push(argv);
+            // eslint-disable-next-line unicorn/prefer-event-target -- Models Node ChildProcess events at the spawn boundary.
+            const child = new EventEmitter() as ChildProcess;
+            Object.assign(child, { stdout: new PassThrough(), stderr: new PassThrough() });
+            queueMicrotask(() => {
+                child.stdout?.emit('data', Buffer.from('info: Downloading batch 3 of 7\n'));
+                child.stderr?.emit('data', Buffer.from('info: Uploading batch 2 of 5\n'));
+                child.emit('close', 0);
+            });
+            return child;
+        },
+    });
+    const dependencies: Record<string, unknown> = {
+        vscode: {
+            Uri: { file: (fsPath: string) => ({ fsPath }) },
+            workspace: { getConfiguration: () => ({ get: () => true }) },
+            ProgressLocation: { Notification: 15 },
+            window: {
+                withProgress: async (
+                    options: { title: string },
+                    task: (progress: unknown, token: unknown) => Promise<unknown>
+                ) => {
+                    progressTitles.push(options.title);
+                    return task(
+                        {
+                            report: (value: { message?: string }) => {
+                                reports.push(value);
+                            },
+                        },
+                        {
+                            isCancellationRequested: false,
+                            onCancellationRequested: () => ({ dispose() {} }),
+                        }
+                    );
+                },
+                showInformationMessage: async (message: string) => {
+                    notifications.push(message);
+                },
+            },
+        },
+        './mcdataPrefix': { resolveMcdataLaunch: async () => launch },
+        './mcdataProcessLifecycle': { mcdataProcesses: manager },
+        './mcdataShellCommand': {
+            buildMcdataCommandDisplay: (resolved: typeof launch, argv: string[]) => {
+                displayed.push([...argv]);
+                return buildMcdataCommandDisplay(resolved, argv);
+            },
+        },
+        './sfmcDataOutput': {
+            ...runOutput,
+            getSfmcDataOutputChannel: () => ({
+                append: (text: string) => {
+                    logs.push(text);
+                },
+                appendLine: (text: string) => {
+                    logs.push(text);
+                },
+                show() {},
+            }),
+        },
+        './telemetry': { getReporter() {} },
+    };
+    const loadable = Module as typeof Module & {
+        _load(request: string, parent: NodeModule | undefined, isMain: boolean): unknown;
+    };
+    const original = loadable._load.bind(Module);
+    const modules = ['../runMcdata', '../config'];
+    for (const file of modules) delete require.cache[require.resolve(file)];
+    loadable._load = function (request, parent, isMain) {
+        return dependencies[request] ?? original(request, parent, isMain);
+    };
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- Reload the real helper under host and spawn boundary mocks.
+        const runner = require('../runMcdata') as typeof import('../runMcdata');
+        for (const argv of [arguments_, ['init', '--client-secret', secret, '--label', secret]]) {
+            assert.deepEqual(
+                await runner.runMcdataWithProgress({} as vscode.ExtensionContext, root, argv, {
+                    progressTitle: 'Synthetic run',
+                    telemetryCommand: 'sfmc-data.exportDE',
+                }),
+                { status: 'success' }
+            );
+        }
+    } finally {
+        loadable._load = original;
+        for (const file of modules) delete require.cache[require.resolve(file)];
+    }
+    assert.deepEqual(spawned, [
+        [...launch.prefixArgs, ...arguments_, '--debug'],
+        [...launch.prefixArgs, 'init', '--client-secret', secret, '--label', secret, '--debug'],
+    ]);
+    assert.deepEqual(displayed[1], [
+        'init',
+        '--client-secret',
+        '[REDACTED]',
+        '--label',
+        secret,
+        '--debug',
+    ]);
+    assert.ok(
+        logs.some((line) =>
+            /^\[run \d+\] ⚡ mcdata export R1\/DEV --format csv --git --de MCV_Talent_Details --debug$/.test(
+                line
+            )
+        ),
+        JSON.stringify(logs)
+    );
+    assert.ok(logs.every((line) => /^\[run \d+\] /.test(line)));
+    assert.equal(logs.filter((line) => line.includes('⚡')).length, 2);
+    assert.ok(logs.every((line) => (line.match(/⚡/g) ?? []).length <= 1));
+    assert.equal(logs.filter((line) => /^\[run \d+\] START /.test(line)).length, 2);
+    assert.equal(logs.filter((line) => /^\[run \d+\] END .* — success$/.test(line)).length, 2);
+    for (const line of logs) {
+        if (!/^\[run \d+\] (START|END) /.test(line)) continue;
+        assert.equal((line.match(/\[run \d+\]/g) ?? []).length, 1);
+        assert.match(line, /^\[run \d+\] (START|END) Project synthetic-export-project/);
+    }
+    assert.match(logs.find((line) => line.includes('START')) ?? '', /BU R1\/DEV — Synthetic run$/);
+    assert.match(logs.find((line) => line.includes('END')) ?? '', /BU R1\/DEV — success$/);
+    assert.equal(progressTitles.length, 2);
+    assert.equal(notifications.length, 2);
+    for (const title of progressTitles) {
+        assert.match(title, /^Synthetic run — \[run \d+\] Project synthetic-export-project/);
+    }
+    for (const message of notifications) {
+        assert.match(message, /^SFMC Data Loader \[run \d+\] Project synthetic-export-project/);
+    }
+    assert.ok(!logs.join('').includes(launch.executable));
+    assert.ok(!logs.join('').includes(launch.prefixArgs[0]));
+    assert.ok(!logs.join('').includes(secret));
+    assert.ok(!logs.join('').includes(JSON.stringify(secret).slice(1, -1)));
+    assert.ok(logs.some((line) => line.includes('Downloading batch 3 of 7')));
+    assert.ok(logs.some((line) => line.includes('Uploading batch 2 of 5')));
+    assert.ok(reports.some((report) => report.message === 'Downloading batch 3 of 7'));
+    assert.ok(reports.some((report) => report.message === 'Uploading batch 2 of 5'));
+    assert.equal(runOutput.getActiveMcdataRunCount(), 0);
 });
 
 const redactContext = (value: string) => value.replaceAll('secret', '[REDACTED]');

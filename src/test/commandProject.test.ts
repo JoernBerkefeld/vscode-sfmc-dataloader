@@ -149,7 +149,11 @@ async function invoke(
                 errors.push(message);
             },
             showInformationMessage: () => {},
-            showWarningMessage: async () => 'Continue',
+            showWarningMessage: async (
+                _message: string,
+                _options: unknown,
+                ...items: { title: string }[]
+            ) => items.find((item) => item.title === 'Continue'),
             withProgress: async (
                 _options: unknown,
                 task: (progress: { report: () => void }) => Promise<void>

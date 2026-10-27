@@ -346,7 +346,7 @@
                     "scope": "resource",
                     "type": "boolean",
                     "default": false,
-                    "markdownDescription": "Append `--debug` when the extension runs the `mcdata` CLI (same flag as the standalone CLI). Writes API request/response traces under `./logs/data/` in the project â€” useful as a baseline for [support issues](https://github.com/JoernBerkefeld/vscode-sfmc-dataloader/issues). Does **not** apply to **Refresh DE cache** (that path uses the library in-process, not `mcdata`)."
+                    "markdownDescription": "Append `--debug` when the extension runs the `mcdata` CLI (same flag as the standalone CLI). Writes API request/response traces under `./logs/data/` in the project - useful as a baseline for [support issues](https://github.com/JoernBerkefeld/vscode-sfmc-dataloader/issues). Does **not** apply to **Refresh DE cache** (that path uses the library in-process, not `mcdata`)."
                 }
             }
         }

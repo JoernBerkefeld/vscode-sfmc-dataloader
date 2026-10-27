@@ -7,11 +7,13 @@
 - Add project-scoped `sfmcData.jsonPretty` and `sfmcData.maxRowsPerFile` export settings across palette, context, and multi-BU routes.
 - Offer searchable, multi-select DE lists with automatic cache loading for single-BU export/import and cross-BU API import; retain manual key entry.
 - Identify concurrent runs with per-run output tags, START/END entries, project/BU context, independent cancellation, and an active-run status bar count.
+- Show logical `⚡ mcdata` command previews with readable argument quoting instead of internal launcher paths, preserving credential masking and shell-free execution.
 
 ### Fixed
 
-- Confirm every import against captured project/arguments, showing targets, keys/files, mode, backup, and skip-empty-lines options. Require exact typed `CLEAR` for row deletion; dismissing prompts cancels the submitted import.
-- Warn before explicit-file imports of 1 GiB or larger and reject unreadable selections. Clarify that cancellation stops local execution but cannot undo or guarantee stopping remote work already accepted by Salesforce.
+- Confirm every import against captured project/arguments using a native **Import Confirmation** dialog listing only distinct destination credential/BU keys in selected order, with **Continue** and **Cancel**. Require exact typed `CLEAR` in a separate row-deletion acknowledgement; dismissing safety prompts cancels the submitted import.
+- Show exactly one run tag on START/END output entries while retaining tagged progress and outcome notifications.
+- Show an informational **OK** notice, “Large imports can take a long time.”, before explicit-file imports when any file is 1 GiB or larger; dismissing this notice continues to the separate, cancellable import safeguards. Reject unreadable selections. Clarify that cancellation stops local execution but cannot undo or guarantee stopping remote work already accepted by Salesforce.
 - Report malformed project and authentication JSON using filename-only errors without exposing JSON excerpts. Public project discovery does not parse authentication contents; operations requiring authentication still validate it.
 
 ### Dependencies

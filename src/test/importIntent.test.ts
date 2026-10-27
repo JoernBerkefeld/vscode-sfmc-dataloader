@@ -29,6 +29,7 @@ type Decision =
     | 'no'
     | 'cancel'
     | 'modal-dismiss'
+    | 'escape'
     | 'typed-dismiss'
     | 'typed-wrong'
     | 'mode-dismiss'
@@ -43,7 +44,9 @@ type Decision =
  * @param decision User response at the clear prompt.
  * @param selected Optional explicit Explorer selection.
  * @param size Synthetic file size in bytes.
- * @param shouldCancelLarge Whether to dismiss the large-file warning.
+ * @param shouldDismissLarge Whether to close the informational notice without an item result.
+ * @param targetLabels Optional selected target labels, including duplicates.
+ * @param shouldClear Whether the optional clear choice selects deletion.
  * @returns {Promise<{ runs: string[][]; errors: string[]; clearPrompts: number }>} Captured execution arguments, errors and prompt count.
  */
 async function invoke(
@@ -51,7 +54,9 @@ async function invoke(
     decision: Decision,
     selected?: string[],
     size = 0,
-    shouldCancelLarge = false
+    shouldDismissLarge = false,
+    targetLabels?: string[],
+    shouldClear = true
 ) {
     const [file, registration, branch] = route;
     const loadable = Module as typeof Module & {
@@ -63,7 +68,7 @@ async function invoke(
     const errors: string[] = [];
     let clearPrompts = 0;
     const details: string[] = [];
-    let largeWarnings = 0;
+    let largeNotices = 0;
     const host = {
         workspace: {
             workspaceFolders: [],
@@ -87,29 +92,69 @@ async function invoke(
             ) => {
                 if (options.title === 'Clear target Data Extension rows first?') {
                     clearPrompts++;
-                    return decision === 'dismiss' ? undefined : { clear: decision !== 'no' };
+                    return decision === 'dismiss'
+                        ? undefined
+                        : { clear: shouldClear && decision !== 'no' };
                 }
                 return options.canPickMany
-                    ? [{ label: file === 'contextImportToBU' ? 'org/bu' : 'bu' }]
+                    ? (targetLabels ?? [file === 'contextImportToBU' ? 'org/bu' : 'bu']).map(
+                          (label) => ({ label })
+                      )
                     : { method: branch, source: 'manual' };
             },
-            showWarningMessage: async (message: string, options: { detail: string }) => {
+            showInformationMessage: async (
+                message: string,
+                options: { detail: string; modal: boolean },
+                ...items: { title: string; isCloseAffordance?: boolean }[]
+            ) => {
+                assert.equal(message, 'At least one selected file is 1 GiB or larger.');
+                assert.equal(options.modal, true);
+                assert.deepEqual(items, [{ title: 'OK', isCloseAffordance: true }]);
                 details.push(options.detail);
-                if (message.includes('1 GiB')) {
-                    largeWarnings++;
-                    return shouldCancelLarge ? undefined : 'Continue';
-                }
-                if (decision === 'modal-dismiss') return;
-                return decision === 'cancel' ? 'Cancel' : 'Continue';
+                largeNotices++;
+                return shouldDismissLarge ? undefined : items[0];
             },
-            showInputBox: async (options: { title?: string }) =>
-                options.title === 'Acknowledge target row deletion'
-                    ? decision === 'typed-dismiss'
-                        ? undefined
-                        : decision === 'typed-wrong'
-                          ? 'clear'
-                          : 'CLEAR'
-                    : 'Orders.v2/Item*',
+            showWarningMessage: async (
+                message: string,
+                options: { detail: string; modal: boolean },
+                ...items: { title: string; isCloseAffordance?: boolean }[]
+            ) => {
+                assert.equal(message, 'Import Confirmation');
+                assert.equal(options.modal, true);
+                assert.deepEqual(items, [
+                    { title: 'Continue' },
+                    { title: 'Cancel', isCloseAffordance: true },
+                ]);
+                details.push(options.detail);
+                if (decision === 'modal-dismiss') return;
+                if (decision === 'escape') return items.find((item) => item.isCloseAffordance);
+                return items.find(
+                    (item) => item.title === (decision === 'cancel' ? 'Cancel' : 'Continue')
+                );
+            },
+            showInputBox: async (options: {
+                title?: string;
+                prompt?: string;
+                validateInput?: (value: string) => string | undefined;
+            }) => {
+                if (options.title !== 'Acknowledge target row deletion') return 'Orders.v2/Item*';
+                assert.match(
+                    options.prompt ?? '',
+                    /irreversible deletion of all existing target rows/
+                );
+                assert.equal(options.validateInput?.('CLEAR'), undefined);
+                for (const value of ['clear', ' CLEAR', 'CLEAR ', '']) {
+                    assert.equal(
+                        options.validateInput?.(value),
+                        'Type CLEAR exactly, or cancel the import.'
+                    );
+                }
+                return decision === 'typed-dismiss'
+                    ? undefined
+                    : decision === 'typed-wrong'
+                      ? 'clear'
+                      : 'CLEAR';
+            },
             showOpenDialog: async () => [{ fsPath: data }],
             showErrorMessage: (message: string) => {
                 errors.push(message);
@@ -118,7 +163,12 @@ async function invoke(
     };
     const dependencies: Record<string, unknown> = {
         vscode: host,
-        'node:fs': { statSync: () => ({ size }) },
+        'node:fs': {
+            statSync: () => {
+                if (size < 0) throw new Error('Unreadable selected file');
+                return { size };
+            },
+        },
         '../config': {
             selectProjectRoot: async () => root,
             getProjectConfiguration: host.workspace.getConfiguration,
@@ -173,7 +223,7 @@ async function invoke(
             fsPath,
         }));
         await command(uris[0], uris);
-        return { runs, errors, clearPrompts, details, largeWarnings };
+        return { runs, errors, clearPrompts, details, largeNotices };
     } finally {
         replacement.mock.restore();
         for (const modulePath of modules) delete require.cache[modulePath];
@@ -182,10 +232,19 @@ async function invoke(
 
 describe('real clear prompt composed with every import route', () => {
     for (const route of routes) {
+        for (const decision of ['cancel', 'modal-dismiss', 'escape'] as const) {
+            it(`${route[0]}/${route[2]} aborts without clearing on ${decision}`, async () => {
+                const result = await invoke(route, decision, undefined, 0, false, undefined, false);
+                assert.deepEqual(result.runs, []);
+                assert.deepEqual(result.errors, []);
+                assert.equal(result.details[0], 'Commence import into BU:\n• org/bu');
+            });
+        }
         for (const decision of [
             'dismiss',
             'cancel',
             'modal-dismiss',
+            'escape',
             'typed-dismiss',
             'typed-wrong',
         ] as const) {
@@ -226,6 +285,24 @@ describe('submitted import safety', () => {
         assert.ok(Object.isFrozen(intent.arguments));
     });
     for (const route of routes) {
+        if (!['importDECrossBU', 'contextImportToBU'].includes(route[0])) continue;
+        it(`${route[0]}/${route[2]} lists distinct destination keys in selected order`, async () => {
+            const isContext = route[0] === 'contextImportToBU';
+            const targets = isContext
+                ? ['other/two', 'org/one', 'other/two', 'org/two']
+                : ['two', 'one', 'two'];
+            const result = await invoke(route, 'no', undefined, 0, false, targets);
+            assert.equal(
+                result.details[0],
+                isContext
+                    ? 'Commence import into BU:\n• other/two\n• org/one\n• org/two'
+                    : 'Commence import into BU:\n• org/two\n• org/one'
+            );
+            assert.equal(result.runs.length, 1);
+            assert.equal(result.runs[0].filter((value) => value === '--to').length, targets.length);
+        });
+    }
+    for (const route of routes) {
         for (const decision of ['mode-dismiss', 'backup-dismiss'] as const) {
             it(`${route[0]}/${route[2]} aborts on ${decision}`, async () => {
                 const result = await invoke(route, decision);
@@ -233,26 +310,57 @@ describe('submitted import safety', () => {
                 assert.equal(result.details.length, 0);
             });
         }
-        it(`${route[0]}/${route[2]} shows submitted project, targets and input`, async () => {
-            const result = await invoke(route, 'no');
-            assert.match(result.details[0], /Project 1:/);
-            assert.ok(result.details[0].includes(root));
-            assert.match(result.details[0], /Target BU\(s\) 1: org\/bu/);
-            assert.match(result.details[0], /Orders/);
-            if (route[2] === 'file' || route[2] === 'data') {
-                assert.match(result.details[0], /derives each target DE key from its filename/);
+        for (const decision of ['no', 'confirm', 'disabled'] as const) {
+            it(`${route[0]}/${route[2]} shows only the destination BU on ${decision}`, async () => {
+                const result = await invoke(route, decision);
+                assert.equal(result.details[0], 'Commence import into BU:\n• org/bu');
+            });
+        }
+        for (const shouldDismissLarge of [false, true]) {
+            it(`${route[0]}/${route[2]} continues after informational ${shouldDismissLarge ? 'undefined' : 'OK'}`, async () => {
+                const result = await invoke(route, 'no', undefined, 1024 ** 3, shouldDismissLarge);
+                assert.equal(result.runs.length, 1);
+                assert.equal(result.clearPrompts, 1);
+                if (route[2] === 'file' || route[2] === 'data') {
+                    assert.equal(result.largeNotices, 1);
+                    assert.equal(result.details.length, 2);
+                    assert.equal(
+                        result.details[0].split('\n').at(-1),
+                        'Large imports can take a long time. Keep VS Code open and stay connected until the job finishes.'
+                    );
+                } else {
+                    assert.equal(result.largeNotices, 0);
+                }
+            });
+            for (const decision of ['modal-dismiss', 'typed-dismiss'] as const) {
+                it(`${route[0]}/${route[2]} still aborts on ${decision} after informational ${shouldDismissLarge ? 'undefined' : 'OK'}`, async () => {
+                    const result = await invoke(
+                        route,
+                        decision,
+                        undefined,
+                        1024 ** 3,
+                        shouldDismissLarge
+                    );
+                    assert.deepEqual(result.runs, []);
+                    assert.deepEqual(result.errors, []);
+                    assert.equal(result.clearPrompts, 1);
+                });
             }
-        });
-        it(`${route[0]}/${route[2]} continues after accepting a large-file warning`, async () => {
-            const result = await invoke(route, 'no', undefined, 1024 ** 3);
-            assert.equal(result.runs.length, 1);
+        }
+        it(`${route[0]}/${route[2]} rejects unreadable explicit files only`, async () => {
+            const result = await invoke(route, 'no', undefined, -1);
+            const isFileInput = route[2] === 'file' || route[2] === 'data';
+            assert.equal(result.runs.length, isFileInput ? 0 : 1);
+            assert.equal(result.errors.length, isFileInput ? 1 : 0);
+            assert.equal(result.clearPrompts, isFileInput ? 0 : 1);
+            assert.equal(result.largeNotices, 0);
         });
         for (const size of [1024 ** 3 - 1, 1024 ** 3]) {
             it(`${route[0]}/${route[2]} applies per-file threshold ${size}`, async () => {
                 const result = await invoke(route, 'no', undefined, size, true);
-                const isWarn = (route[2] === 'file' || route[2] === 'data') && size >= 1024 ** 3;
-                assert.equal(result.largeWarnings, isWarn ? 1 : 0);
-                assert.equal(result.runs.length, isWarn ? 0 : 1);
+                const isNotice = (route[2] === 'file' || route[2] === 'data') && size >= 1024 ** 3;
+                assert.equal(result.largeNotices, isNotice ? 1 : 0);
+                assert.equal(result.runs.length, 1);
             });
         }
     }

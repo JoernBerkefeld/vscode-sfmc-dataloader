@@ -64,8 +64,52 @@ describe('literal argv delivery', () => {
             { executable: 'node', prefixArgs: ['my script'] },
             arguments_
         );
-        assert.ok(display.startsWith('"node" "my script" ""'));
+        assert.ok(display.startsWith('⚡ mcdata ""'));
+        assert.ok(!display.includes('node'));
+        assert.ok(!display.includes('my script'));
         assert.ok(display.includes(String.raw`"line\nbreak"`));
         assert.deepEqual(arguments_, before);
+    });
+    it('shows ordinary CLI tokens without quotes or launcher internals', () => {
+        assert.equal(
+            buildMcdataCommandDisplay(launch, [
+                'export',
+                'R1/DEV',
+                '--format',
+                'csv',
+                '--git',
+                '--de',
+                'MCV_Talent_Details',
+                '--debug',
+            ]),
+            '⚡ mcdata export R1/DEV --format csv --git --de MCV_Talent_Details --debug'
+        );
+        assert.equal(buildMcdataCommandDisplay(launch, []), '⚡ mcdata');
+        assert.equal(
+            buildMcdataCommandDisplay(launch, ['file-name.csv', '--format=csv', 'Grüße世界']),
+            '⚡ mcdata file-name.csv --format=csv Grüße世界'
+        );
+    });
+    it('JSON-quotes empty, whitespace, control, quote and shell-special tokens', () => {
+        for (const argument of [
+            ...arguments_,
+            'tab\tvalue',
+            'null\u{0}value',
+            'delete\u{7F}value',
+            'control\u{85}value',
+            '`command`',
+            '(group)',
+            '{group}',
+            '[pattern]',
+            '*',
+            '?',
+            '#comment',
+            '~home',
+        ]) {
+            assert.equal(
+                buildMcdataCommandDisplay(launch, [argument]),
+                `⚡ mcdata ${JSON.stringify(argument)}`
+            );
+        }
     });
 });

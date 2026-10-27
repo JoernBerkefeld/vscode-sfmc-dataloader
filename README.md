@@ -37,14 +37,17 @@ These commands open a guided QuickPick workflow:
 - **Export DE Data:** **Select credential** → **Business Unit** → **From DE list** (search by name/key, select multiple) or **Enter DE keys manually**. A missing session cache is fetched automatically; **Refresh DE Cache** explicitly reloads it. Multi-BU palette exports retain manual key entry. Format and file-splitting options follow the selected project's settings.
 - **Import DE Data:** **Select credential** → **Business Unit** → **By DE key** (searchable DE list or manual keys) or **By file path** (one or more data files). The DE list describes the target BU; matching local exports must already exist. Cross-BU API imports offer the source BU's DE list, not a validation of every target. Then choose mode, backup, and optional clear behavior as configured.
 
-Every import route shows a final summary of the submitted project, source/target
-BUs, keys or files, mode, backup, and skip-empty-lines choice. Execution uses the
-captured project and import arguments, not later changes to the selection.
-Choosing to clear rows additionally requires typing **`CLEAR`** exactly after
-the summary confirmation. Dismissing any safety prompt cancels the import;
-choosing **No (keep existing rows)** continues to the non-destructive summary.
-Explicit files of **1 GiB or larger** trigger a separate warning before starting;
-unreadable selected files prevent submission. File names determine target DE keys
+Every import route shows a native **Import Confirmation** dialog with
+**Commence import into BU:** followed by one bullet per distinct destination
+credential/BU, in selected order. Choose **Continue** to proceed or **Cancel** to
+abort. Execution uses the captured project and import arguments, not later
+changes to the selection. Choosing to clear rows additionally requires typing
+**`CLEAR`** exactly in a separate irreversible-deletion acknowledgement after
+the confirmation. Dismissing any safety prompt cancels the import;
+choosing **No (keep existing rows)** continues without clearing.
+Explicit files of **1 GiB or larger** show a separate informational notice with
+**OK**; closing it continues to the ordinary confirmation and optional clear safeguards,
+which remain cancellable. Unreadable selected files prevent submission. File names determine target DE keys
 under the loader's filename-validation rules, not the file contents.
 
 ### Explorer, editor tab, and editor context menus
@@ -68,12 +71,14 @@ In multi-root workspaces, context commands use the selected file's project. Pale
 Concurrent `mcdata` runs are supported. Each has its own **cancellable** progress
 notification, a session-local **`[run N]`** tag, and bounded project/source/target
 context. **Stdout/stderr** stream to the shared **SFMC Data Loader** output channel
-with the run tag on each fragment and explicit START/END entries. The **mcdata**
+with the run tag on each fragment and exactly one run tag on each START/END entry. The **mcdata**
 status bar item shows the active-run count and opens output. Cancelling a
 notification targets that run, not its siblings. Success is reported only after
 successful execution; cancellation and failures do not report success. Choose
 **More Details** to focus the log. Tags/context are local UI/output aids, not
 additional telemetry fields.
+
+Command previews show `[run N] ⚡ mcdata export ...` (or the selected subcommand), hiding internal executable paths and quoting special arguments for readability. This display is informational only; execution still uses separate arguments without a shell.
 
 Launches pass arguments without shell interpretation. Recognized Windows npm `.cmd` shims run directly through Node.js; unsupported shell wrappers are rejected. Node/PATH probes are asynchronous and time-bounded. Command displays mask credential arguments, but credentials passed as arguments may still be visible to local process-inspection tools. Debug files can contain business data and are not automatically safe to share, especially with older or custom CLIs.
 

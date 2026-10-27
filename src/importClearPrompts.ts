@@ -20,18 +20,6 @@ export function captureImportIntent(projectRoot: string, arguments_: string[]): 
 }
 
 /**
- * Bounds potentially large or multiline identifiers in native confirmation text.
- * @param values - Submitted values to display.
- * @returns {string} Count and a limited preview.
- */
-function preview(values: readonly string[]): string {
-    return `${values.length}: ${values
-        .slice(0, 5)
-        .map((value) => value.replaceAll(/[\r\n\t]/g, ' ').slice(0, 160))
-        .join(', ')}${values.length > 5 ? ', …' : ''}`;
-}
-
-/**
  * Confirms the submitted operation and optionally requires typed destructive consent.
  * @param config - Settings captured for the selected project.
  * @param intent - Immutable project and argv used for both display and execution.
@@ -48,19 +36,7 @@ export async function promptOptionalClearBeforeImport(
     const files = values('--file');
     const targets = values('--to');
     if (targets.length === 0) targets.push(intent.arguments[1]);
-    const sources = values('--from');
-    const detail = [
-        `Project ${preview([intent.projectRoot])}`,
-        ...(sources.length ? [`Source BU ${preview(sources)}`] : []),
-        `Target BU(s) ${preview(targets)}`,
-        files.length ? `Files ${preview(files)}` : `DE keys ${preview(values('--de'))}`,
-        ...(files.length
-            ? [
-                  'The loader derives each target DE key from its filename, not its contents. Loader filename validation still applies.',
-              ]
-            : []),
-        `Mode: ${values('--mode')[0]}; backup: ${intent.arguments.includes('--backup-before-import') ? 'yes' : 'no'}; skip empty lines: ${intent.arguments.includes('--skip-empty-lines') ? 'yes' : 'no'}`,
-    ].join('\n');
+    const detail = `Commence import into BU:\n${[...new Set(targets)].map((target) => `• ${target}`).join('\n')}`;
 
     if (files.length) {
         let sizes: number[];
@@ -73,15 +49,14 @@ export async function promptOptionalClearBeforeImport(
             return undefined;
         }
         if (sizes.some((size) => size >= 1024 ** 3)) {
-            const proceed = await vscode.window.showWarningMessage(
+            await vscode.window.showInformationMessage(
                 'At least one selected file is 1 GiB or larger.',
                 {
                     modal: true,
-                    detail: `${detail}\nLarge imports stream in batches and can take a long time. Keep VS Code open and stay connected until the job finishes.`,
+                    detail: `${detail}\nLarge imports can take a long time. Keep VS Code open and stay connected until the job finishes.`,
                 },
-                'Continue'
+                { title: 'OK', isCloseAffordance: true }
             );
-            if (proceed !== 'Continue') return undefined;
         }
     }
 
@@ -102,13 +77,15 @@ export async function promptOptionalClearBeforeImport(
     }
 
     const confirm = await vscode.window.showWarningMessage(
-        isClear
-            ? 'Delete all existing rows in these target DEs and import? This cannot be undone.'
-            : 'Import into these target Data Extensions?',
-        { modal: true, detail },
-        'Continue'
+        'Import Confirmation',
+        {
+            modal: true,
+            detail,
+        },
+        { title: 'Continue' },
+        { title: 'Cancel', isCloseAffordance: true }
     );
-    if (confirm !== 'Continue') return undefined;
+    if (confirm?.title !== 'Continue') return undefined;
     if (isClear) {
         const acknowledgement = await vscode.window.showInputBox({
             title: 'Acknowledge target row deletion',

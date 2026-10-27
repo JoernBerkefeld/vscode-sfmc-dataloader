@@ -53,6 +53,17 @@ describe('workspace capability manifest', () => {
         assert.equal(split.maximum, Number.MAX_SAFE_INTEGER);
     });
 
+    it('describes opt-in CLI debug logging with an ASCII separator', () => {
+        const debug = properties['sfmcData.createDebugLog'];
+        assert.equal(debug.default, false);
+        assert.match(debug.markdownDescription, /Append `--debug`/);
+        assert.match(debug.markdownDescription, /in the project - useful as a baseline/);
+        assert.match(
+            debug.markdownDescription,
+            /Does \*\*not\*\* apply to \*\*Refresh DE cache\*\*/
+        );
+    });
+
     it('keeps executable paths machine-specific but folder-overridable', () => {
         assert.equal(properties['sfmcData.mcdataPath'].scope, 'machine-overridable');
     });
