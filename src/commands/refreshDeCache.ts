@@ -142,7 +142,7 @@ async function refreshDeCache(): Promise<void> {
         );
     } else {
         void vscode.window.showInformationMessage(
-            'DE cache refreshed. You can run Import DE and choose "From DE list" for those Business Units.'
+            'DE cache refreshed. Export DE Data, Import DE Data (By DE key), and Import DE Data (Cross-BU) offer "From DE list". Import by key requires matching local exports under ./data/.'
         );
     }
 }

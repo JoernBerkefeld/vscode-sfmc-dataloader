@@ -23,19 +23,29 @@ npm install sfmc-dataloader
 
 ### Command Palette
 
-| Command | Description |
-|---|---|
-| `SFMC Data: Initialize Project` | Create `.mcdatarc.json` + `.mcdata-auth.json` (standalone setup, no mcdev needed) |
-| `SFMC Data: Refresh DE Cache` | Load Data Extension names and keys for one credential and selected BUs into a **session-only** cache (cleared when VS Code restarts) |
-| `SFMC Data: Export DE Data` | Export one or more Data Extension rows to CSV/TSV/JSON (manual DE keys or pick from a **session DE cache**) |
-| `SFMC Data: Export DE Data (Multi-BU)` | Export from several BUs in one command |
-| `SFMC Data: Import DE Data` | Import rows from a file or by DE key |
-| `SFMC Data: Import DE Data (Cross-BU)` | Import rows from one BU into multiple target BUs via the SFMC API |
+| Command                                | Description                                                                                                                          |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `SFMC Data: Initialize Project`        | Create `.mcdatarc.json` + `.mcdata-auth.json` (standalone setup, no mcdev needed)                                                    |
+| `SFMC Data: Refresh DE Cache`          | Load Data Extension names and keys for one credential and selected BUs into a **session-only** cache (cleared when VS Code restarts) |
+| `SFMC Data: Export DE Data`            | Export one or more Data Extension rows to CSV/TSV/JSON (manual DE keys or pick from a **session DE cache**)                          |
+| `SFMC Data: Export DE Data (Multi-BU)` | Export from several BUs in one command                                                                                               |
+| `SFMC Data: Import DE Data`            | Import rows from a file or by DE key                                                                                                 |
+| `SFMC Data: Import DE Data (Cross-BU)` | Import rows from one BU into multiple target BUs via the SFMC API                                                                    |
 
 These commands open a guided QuickPick workflow:
 
-- **Export DE Data:** **Select credential** → **Business Unit** → **Enter DE keys manually** or **From DE list** (requires **Refresh DE cache** for that credential/BU first when using the list). Then format follows your settings.
-- **Import DE Data:** **Select credential** → **Business Unit** → **By DE key** (comma-separated keys) or **By file path** (one or more data files). Then mode, backup, and optional clear prompts as configured.
+- **Export DE Data:** **Select credential** → **Business Unit** → **From DE list** (search by name/key, select multiple) or **Enter DE keys manually**. A missing session cache is fetched automatically; **Refresh DE Cache** explicitly reloads it. Multi-BU palette exports retain manual key entry. Format and file-splitting options follow the selected project's settings.
+- **Import DE Data:** **Select credential** → **Business Unit** → **By DE key** (searchable DE list or manual keys) or **By file path** (one or more data files). The DE list describes the target BU; matching local exports must already exist. Cross-BU API imports offer the source BU's DE list, not a validation of every target. Then choose mode, backup, and optional clear behavior as configured.
+
+Every import route shows a final summary of the submitted project, source/target
+BUs, keys or files, mode, backup, and skip-empty-lines choice. Execution uses the
+captured project and import arguments, not later changes to the selection.
+Choosing to clear rows additionally requires typing **`CLEAR`** exactly after
+the summary confirmation. Dismissing any safety prompt cancels the import;
+choosing **No (keep existing rows)** continues to the non-destructive summary.
+Explicit files of **1 GiB or larger** trigger a separate warning before starting;
+unreadable selected files prevent submission. File names determine target DE keys
+under the loader's filename-validation rules, not the file contents.
 
 ### Explorer, editor tab, and editor context menus
 
@@ -48,14 +58,22 @@ You can **multi-select** files within the same project and BU. Imports require e
 
 In multi-root workspaces, context commands use the selected file's project. Palette commands offer a project picker when more than one configured project is available. Project settings and cached DE lists remain isolated by project and account/BU identity. Only trusted, on-disk workspace folders are supported.
 
-| Context menu item | retrieve/ files | data/ files |
-|---|---|---|
-| **Export Data** | `mcdata export <cred/bu> --de <key>...` | same |
-| **Export from BUs...** | Multi-select source BUs (pre-selects current BU), runs `mcdata export --from ...` | same |
-| **Import Data** | `mcdata import <cred/bu> --de <key>...` (resolves latest export file) | `mcdata import <cred/bu> --file <path>...` |
-| **Import to BU...** | Multi-select target BUs, runs `mcdata import --from <src> --to <tgt>... --de <key>...` | Multi-select target BUs, runs `mcdata import --to <tgt>... --file <path>...` |
+| Context menu item      | retrieve/ files                                                                        | data/ files                                                                  |
+| ---------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **Export Data**        | `mcdata export <cred/bu> --de <key>...`                                                | same                                                                         |
+| **Export from BUs...** | Multi-select source BUs (pre-selects current BU), runs `mcdata export --from ...`      | same                                                                         |
+| **Import Data**        | `mcdata import <cred/bu> --de <key>...` (resolves latest export file)                  | `mcdata import <cred/bu> --file <path>...`                                   |
+| **Import to BU...**    | Multi-select target BUs, runs `mcdata import --from <src> --to <tgt>... --de <key>...` | Multi-select target BUs, runs `mcdata import --to <tgt>... --file <path>...` |
 
-While `mcdata` runs, the extension shows a **cancellable** notification. **Stdout/stderr** stream to the **SFMC Data Loader** output channel. Success is reported only after successful execution; cancellation and failures do not report success. Choose **More Details** to focus the log.
+Concurrent `mcdata` runs are supported. Each has its own **cancellable** progress
+notification, a session-local **`[run N]`** tag, and bounded project/source/target
+context. **Stdout/stderr** stream to the shared **SFMC Data Loader** output channel
+with the run tag on each fragment and explicit START/END entries. The **mcdata**
+status bar item shows the active-run count and opens output. Cancelling a
+notification targets that run, not its siblings. Success is reported only after
+successful execution; cancellation and failures do not report success. Choose
+**More Details** to focus the log. Tags/context are local UI/output aids, not
+additional telemetry fields.
 
 Launches pass arguments without shell interpretation. Recognized Windows npm `.cmd` shims run directly through Node.js; unsupported shell wrappers are rejected. Node/PATH probes are asynchronous and time-bounded. Command displays mask credential arguments, but credentials passed as arguments may still be visible to local process-inspection tools. Debug files can contain business data and are not automatically safe to share, especially with older or custom CLIs.
 
@@ -65,18 +83,20 @@ Cancellation does not roll back API work already submitted. On Windows, a custom
 
 All settings are under the **SFMC Data Loader** section in VS Code Settings.
 
-| Setting | Default | Description |
-|---|---|---|
-| `sfmcData.mcdataSource` | `bundled` | How to resolve `mcdata`: `bundled` (extension CLI only), `auto` (workspace `.bin` → `PATH` → bundled), or `custom` (use `sfmcData.mcdataPath`). |
-| `sfmcData.mcdataPath` | `""` | Path to the `mcdata` executable — **only when `mcdataSource` is `custom`**. Ignored for `bundled` and `auto` (you may clear a stale path). |
-| `sfmcData.useGitFilenames` | `false` | When `true`, appends `--git` to every `mcdata` invocation so exports use stable `*.mcdata.<ext>` names without a timestamp. |
-| `sfmcData.promptClearBeforeImport` | `true` | When `true`, after you finish the import QuickPick flow, prompts whether to clear the target Data Extension before import (two-step confirmation; maps to `mcdata` clear-before-import flags). |
-| `sfmcData.promptImportMode` | `true` | When `true`, prompts for upsert vs insert after you choose import inputs and before the optional clear-before-import step. |
-| `sfmcData.skipEmptyLines` | `false` | When `true`, passes `--skip-empty-lines` on all import routes to skip empty CSV/TSV records. Off by default; does not affect exports or JSON imports. |
-| `sfmcData.importMode` | `upsert` | Default row write mode for imports when not prompting: `upsert` or `insert`. |
-| `sfmcData.defaultFormat` | `csv` | Default file format for exports: `csv`, `tsv`, or `json`. Import format is detected automatically from the file extension. |
-| `sfmcData.backupBeforeImport` | `prompt` | Whether to export a timestamped backup of each target DE before import: `prompt` (ask each time via QuickPick), `always` (backup without asking), or `never` (skip without asking). Backup filenames always include a timestamp. |
-| `sfmcData.createDebugLog` | `false` | When `true`, appends `--debug` to every `mcdata` subprocess so the CLI writes an API trace under `./logs/data/` (useful for [GitHub issues](https://github.com/JoernBerkefeld/vscode-sfmc-dataloader/issues)). Does not affect **Refresh DE cache** (in-process, not `mcdata`). |
+| Setting                            | Default   | Description                                                                                                                                                                                                                                                                     |
+| ---------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sfmcData.mcdataSource`            | `bundled` | How to resolve `mcdata`: `bundled` (extension CLI only), `auto` (workspace `.bin` → `PATH` → bundled), or `custom` (use `sfmcData.mcdataPath`).                                                                                                                                 |
+| `sfmcData.mcdataPath`              | `""`      | Path to the `mcdata` executable — **only when `mcdataSource` is `custom`**. Ignored for `bundled` and `auto` (you may clear a stale path).                                                                                                                                      |
+| `sfmcData.useGitFilenames`         | `false`   | When `true`, appends `--git` to every `mcdata` invocation so exports use stable `*.mcdata.<ext>` names without a timestamp.                                                                                                                                                     |
+| `sfmcData.promptClearBeforeImport` | `true`    | When `true`, after you finish the import QuickPick flow, prompts whether to clear the target Data Extension before import (two-step confirmation; maps to `mcdata` clear-before-import flags).                                                                                  |
+| `sfmcData.promptImportMode`        | `true`    | When `true`, prompts for upsert vs insert after you choose import inputs and before the optional clear-before-import step.                                                                                                                                                      |
+| `sfmcData.skipEmptyLines`          | `false`   | When `true`, passes `--skip-empty-lines` on all import routes to skip empty CSV/TSV records. Off by default; does not affect exports or JSON imports.                                                                                                                           |
+| `sfmcData.importMode`              | `upsert`  | Default row write mode for imports when not prompting: `upsert` or `insert`.                                                                                                                                                                                                    |
+| `sfmcData.defaultFormat`           | `csv`     | Default file format for exports: `csv`, `tsv`, or `json`. Import format is detected automatically from the file extension.                                                                                                                                                      |
+| `sfmcData.jsonPretty`              | `false`   | Pretty-print JSON exports (`--json-pretty`); ignored for CSV/TSV. Applies to palette and context exports, including multi-BU routes.                                                                                                                                            |
+| `sfmcData.maxRowsPerFile`          | `null`    | Split exports with `--max-rows-per-file`; use a positive safe integer, or `null` for unsplit output. Invalid values block export. Applies to all export routes and uses the selected project's resource settings.                                                               |
+| `sfmcData.backupBeforeImport`      | `prompt`  | Whether to export a timestamped backup of each target DE before import: `prompt` (ask each time via QuickPick), `always` (backup without asking), or `never` (skip without asking). Backup filenames always include a timestamp.                                                |
+| `sfmcData.createDebugLog`          | `false`   | When `true`, appends `--debug` to every `mcdata` subprocess so the CLI writes an API trace under `./logs/data/` (useful for [GitHub issues](https://github.com/JoernBerkefeld/vscode-sfmc-dataloader/issues)). Does not affect **Refresh DE cache** (in-process, not `mcdata`). |
 
 ### Settings UI after an extension update
 

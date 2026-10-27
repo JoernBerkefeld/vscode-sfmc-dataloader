@@ -39,12 +39,27 @@ type Route = (typeof routes)[number];
  * @param route - Command module and registration.
  * @param scenario - Resource/picker invocation to simulate.
  * @param malformedConfig - Public config filename to populate with invalid, sensitive JSON.
+ * @param exportSettings - Folder-scoped export settings overrides.
+ * @param selection - Key picker scenario.
+ * @param selection.input - Manual key input.
+ * @param selection.list - Select the cached list.
+ * @param selection.empty - Return an empty cache.
+ * @param selection.fail - Fail cache lookup.
+ * @param selection.cancel - Dismiss key-source selection.
  * @returns {Promise<object>} Captured project, settings, executions and errors.
  */
 async function invoke(
     route: Route,
     scenario: 'explicit' | 'active' | 'cross' | 'virtual' | 'cancel' | 'sole',
-    malformedConfig?: '.mcdevrc.json' | '.mcdatarc.json'
+    malformedConfig?: '.mcdevrc.json' | '.mcdatarc.json',
+    exportSettings: Record<string, unknown> = {},
+    selection: {
+        input?: string;
+        list?: boolean;
+        empty?: boolean;
+        fail?: boolean;
+        cancel?: boolean;
+    } = {}
 ) {
     const [file, registration, isContext] = route;
     const root = folders[1].uri.fsPath;
@@ -64,6 +79,8 @@ async function invoke(
     const settings: string[] = [];
     const reads: string[] = [];
     const fetches: string[] = [];
+    const lists: string[] = [];
+    const prompts: string[] = [];
     let pickerCalls = 0;
     let command: ((...arguments_: unknown[]) => Promise<void>) | undefined;
     const host = {
@@ -89,6 +106,7 @@ async function invoke(
                             promptImportMode: false,
                             importMode: 'insert',
                             backupBeforeImport: 'never',
+                            ...exportSettings,
                         })[key as 'defaultFormat'],
                 };
             },
@@ -106,27 +124,41 @@ async function invoke(
             },
             showQuickPick: async (
                 items: { folder?: unknown; label: string }[],
-                options: { canPickMany?: boolean }
+                options: { canPickMany?: boolean; placeHolder?: string; title?: string }
             ) => {
+                prompts.push(options.placeHolder ?? '');
                 if (items[0]?.folder) {
                     pickerCalls++;
                     return scenario === 'cancel' ? undefined : items[1];
                 }
-                if (options.canPickMany) return [items[0]];
-                return { source: 'manual', method: 'key' };
+                if (options.canPickMany)
+                    return [options.title?.includes('Target BU') ? items.at(-1) : items[0]];
+                if (typeof items[0] === 'string') return items[0];
+                if (selection.cancel) return;
+                return { source: selection.list ? 'list' : 'manual', method: 'key' };
             },
-            showInputBox: async () => 'Orders',
+            showInputBox: async (options: { validateInput: (value: string) => unknown }) => {
+                const input = selection.input ?? 'Orders';
+                assert.equal(
+                    Boolean(options.validateInput(input)),
+                    input.split(',').every((key) => !key.trim())
+                );
+                return input;
+            },
             showErrorMessage: (message: string) => {
                 errors.push(message);
             },
             showInformationMessage: () => {},
+            showWarningMessage: async () => 'Continue',
             withProgress: async (
                 _options: unknown,
                 task: (progress: { report: () => void }) => Promise<void>
             ) => task({ report() {} }),
         },
     };
-    const config = { credentials: { org: { eid: 200, businessUnits: { bu: 201 } } } };
+    const businessUnits =
+        file === 'importDECrossBU' && selection.list ? { bu: 201, target: 202 } : { bu: 201 };
+    const config = { credentials: { org: { eid: 200, businessUnits } } };
     const dependencies: Record<string, unknown> = {
         vscode: host,
         '../runMcdata': {
@@ -146,9 +178,27 @@ async function invoke(
                 return [];
             },
         },
+        '../deCache': {
+            createDeCacheIdentity: (
+                selectedRoot: string,
+                _config: unknown,
+                credential: string,
+                bu: string
+            ) => {
+                assert.equal(selectedRoot, root);
+                lists.push(`${credential}/${bu}`);
+                return { projectRoot: selectedRoot, credential, bu };
+            },
+            setDeCacheBu() {},
+            getDeCacheForBu: () => {
+                if (selection.fail) throw new Error('List unavailable');
+                return selection.empty ? [] : [{ name: 'Order records', key: 'Orders' }];
+            },
+        },
         '../commandTelemetry': { trackCommandOutcome() {} },
         '../telemetry': { getReporter() {} },
     };
+    dependencies['./deCache'] = dependencies['../deCache'];
     const loadable = Module as typeof Module & {
         _load(request: string, parent: NodeModule | undefined, isMain: boolean): unknown;
     };
@@ -156,6 +206,7 @@ async function invoke(
     const modules = [
         '../config',
         `../commands/${file}`,
+        '../deKeyPicker',
         '../commands/contextUtilities',
         '../commands/refreshDeCache',
         '../importClearPrompts',
@@ -204,7 +255,7 @@ async function invoke(
             await command(metadata(root), [metadata(folders[0].uri.fsPath)]);
         else if (scenario === 'virtual') await command(resource(root, 'vscode-vfs'));
         else await command(metadata(root), [metadata(root)]);
-        return { runs, errors, settings, reads, fetches, pickerCalls, root };
+        return { runs, errors, settings, reads, fetches, pickerCalls, root, lists, prompts };
     } finally {
         for (const replacement of replacements) replacement.mock.restore();
         for (const modulePath of paths) delete require.cache[modulePath];
@@ -212,6 +263,97 @@ async function invoke(
 }
 
 describe('commands composed with real project selection and folder settings', () => {
+    for (const route of routes) {
+        if (route[2] || route[0] === 'refreshDeCache') continue;
+        for (const input of [', ,', '  ', ' ,,, ']) {
+            it(`${route[0]} rejects parsed-empty manual keys ${JSON.stringify(input)}`, async () => {
+                const result = await invoke(route, 'sole', undefined, {}, { input });
+                assert.deepEqual(result.runs, []);
+            });
+        }
+        it(`${route[0]} trims and retains valid manual keys`, async () => {
+            const result = await invoke(
+                route,
+                'sole',
+                undefined,
+                {},
+                { input: ' Orders, , Customers ' }
+            );
+            assert.equal(result.runs.length, 1);
+            assert.ok(result.runs[0].arguments.includes('Orders'));
+            assert.ok(result.runs[0].arguments.includes('Customers'));
+        });
+        if (route[0] === 'exportDEMultiBU') continue;
+        it(`${route[0]} reuses searchable cached selection`, async () => {
+            const result = await invoke(route, 'sole', undefined, {}, { list: true });
+            assert.equal(result.runs.length, 1);
+            assert.deepEqual(result.lists, ['org/bu']);
+            assert.ok(result.prompts.some((prompt) => /Filter by name or key/.test(prompt)));
+            if (route[0] === 'importDE') {
+                assert.ok(
+                    result.prompts.some((prompt) =>
+                        /Target BU.*local exports must exist/.test(prompt)
+                    )
+                );
+            } else if (route[0] === 'importDECrossBU') {
+                assert.ok(result.runs[0].arguments.includes('org/target'));
+                assert.ok(result.prompts.some((prompt) => /Source BU.*API copy/.test(prompt)));
+            }
+        });
+        for (const selection of [{ empty: true }, { fail: true }]) {
+            it(`${route[0]} gives explicit list recovery for ${JSON.stringify(selection)}`, async () => {
+                const result = await invoke(
+                    route,
+                    'sole',
+                    undefined,
+                    {},
+                    { list: true, ...selection }
+                );
+                assert.deepEqual(result.runs, []);
+                assert.match(result.errors[0], /Refresh DE Cache.*enter DE keys manually/);
+            });
+        }
+        it(`${route[0]} stops silently when key-source selection is cancelled`, async () => {
+            const result = await invoke(route, 'sole', undefined, {}, { cancel: true });
+            assert.deepEqual(result.runs, []);
+            assert.deepEqual(result.errors, []);
+            assert.deepEqual(result.lists, []);
+        });
+    }
+    for (const route of routes) {
+        if (!route[0].toLowerCase().includes('export')) continue;
+        for (const format of ['csv', 'tsv', 'json']) {
+            it(`${route[0]} applies folder export options for ${format}`, async () => {
+                const result = await invoke(route, 'explicit', undefined, {
+                    defaultFormat: format,
+                    jsonPretty: true,
+                    maxRowsPerFile: 42,
+                });
+                assert.deepEqual(result.errors, []);
+                assert.equal(result.runs.length, 1);
+                const flags = result.runs[0].arguments;
+                assert.equal(flags.includes('--json-pretty'), format === 'json');
+                assert.equal(flags[flags.indexOf('--max-rows-per-file') + 1], '42');
+            });
+        }
+        it(`${route[0]} preserves unsplit compact defaults`, async () => {
+            const result = await invoke(route, 'explicit', undefined, { defaultFormat: 'json' });
+            assert.deepEqual(result.errors, []);
+            assert.equal(result.runs.length, 1);
+            assert.ok(!result.runs[0].arguments.includes('--json-pretty'));
+            assert.ok(!result.runs[0].arguments.includes('--max-rows-per-file'));
+        });
+        for (const invalid of [0, -1, 1.2, Number.MAX_SAFE_INTEGER + 1, '42']) {
+            it(`${route[0]} blocks invalid split size ${invalid} before execution`, async () => {
+                const result = await invoke(route, 'explicit', undefined, {
+                    maxRowsPerFile: invalid,
+                });
+                assert.deepEqual(result.runs, []);
+                assert.equal(result.errors.length, 1);
+                assert.match(result.errors[0], /sfmcData.maxRowsPerFile.*positive safe integer/);
+            });
+        }
+    }
     for (const route of routes) {
         if (route[0] === 'exportDE' || route[0] === 'refreshDeCache') {
             for (const filename of ['.mcdevrc.json', '.mcdatarc.json'] as const) {

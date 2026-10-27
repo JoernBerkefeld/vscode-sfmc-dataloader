@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'node:fs';
 import path from 'node:path';
 import type { Mcdevrc } from './mcdevrcParser';
+import { validateMaxRowsPerFile, type ExportFileOptions } from './argbuilder';
 
 const FILE_MCDEV_RC = '.mcdevrc.json';
 const FILE_MCDATA_RC = '.mcdatarc.json';
@@ -86,7 +87,16 @@ export async function selectProjectRoot(
 
     const configured = (workspaceFolders ?? []).filter((folder) => findProjectRoot([folder]));
     if (configured.length === 1) return configured[0].uri.fsPath;
-    if (configured.length === 0) return undefined;
+    if (configured.length === 0) {
+        const action = await vscode.window.showErrorMessage(
+            'No SFMC project config found. Open a disk-backed workspace folder containing .mcdevrc.json or .mcdatarc.json, or use SFMC Data: Initialize Project.',
+            'Initialize Project'
+        );
+        if (action === 'Initialize Project') {
+            await vscode.commands.executeCommand('sfmc-data.initProject');
+        }
+        return undefined;
+    }
     const selected = await vscode.window.showQuickPick(
         configured.map((folder) => ({
             label: folder.name,
@@ -106,6 +116,24 @@ export async function selectProjectRoot(
 // eslint-disable-next-line unicorn/name-replacements -- Matches the VS Code getConfiguration API and consumer integration contract.
 export function getProjectConfiguration(projectRoot: string): vscode.WorkspaceConfiguration {
     return vscode.workspace.getConfiguration('sfmcData', vscode.Uri.file(projectRoot));
+}
+
+/**
+ * Reads and validates export file settings before launching a transfer.
+ * @param config - Resource-aware extension settings.
+ * @returns {ExportFileOptions | undefined} Options, or undefined after reporting invalid settings.
+ */
+export function getExportFileOptions(
+    config: vscode.WorkspaceConfiguration
+): ExportFileOptions | undefined {
+    const maxRowsPerFile = config.get<number | null>('maxRowsPerFile');
+    try {
+        validateMaxRowsPerFile(maxRowsPerFile);
+    } catch (ex) {
+        void vscode.window.showErrorMessage((ex as Error).message);
+        return undefined;
+    }
+    return { jsonPretty: config.get<boolean>('jsonPretty') === true, maxRowsPerFile };
 }
 
 /**

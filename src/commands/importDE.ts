@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { selectDeKeys } from '../deKeyPicker';
 import {
     selectProjectRoot,
     getProjectConfiguration as getProjectConfig,
@@ -7,7 +8,7 @@ import {
 import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
 import { runMcdataWithProgress } from '../runMcdata';
 import { buildImportArguments } from '../argbuilder';
-import { promptOptionalClearBeforeImport } from '../importClearPrompts';
+import { captureImportIntent, promptOptionalClearBeforeImport } from '../importClearPrompts';
 import { resolveImportWriteMode } from '../importMode';
 import { resolveBackupBeforeImport } from '../importBackupPrompt';
 
@@ -88,19 +89,14 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
     let filePaths: string[] | undefined;
 
     if (importMethod.method === 'key') {
-        const deInput = await vscode.window.showInputBox({
-            title: 'SFMC Data — Import DE key(s)',
-            prompt: 'Enter one or more DE customer keys (comma-separated)',
-            placeHolder: 'My_DE_Key, Another_DE_Key',
-            ignoreFocusOut: true,
-            validateInput: (v) => (v.trim() ? undefined : 'At least one DE key is required'),
-        });
-        if (!deInput?.trim()) return;
-
-        deKeys = deInput
-            .split(',')
-            .map((k) => k.trim())
-            .filter(Boolean);
+        deKeys = await selectDeKeys(
+            projectRoot,
+            credential,
+            bu,
+            'SFMC Data — Import DE keys',
+            `Target BU ${credential}/${bu}; matching local exports must exist under ./data/`
+        );
+        if (!deKeys) return;
     } else {
         const uris = await vscode.window.showOpenDialog({
             title: 'SFMC Data — Select file(s) to import',
@@ -121,44 +117,29 @@ async function importDE(context: vscode.ExtensionContext): Promise<void> {
     const backupBeforeImport = await resolveBackupBeforeImport(config);
     if (backupBeforeImport === undefined) return;
 
-    const clearChoice = await promptOptionalClearBeforeImport(config);
-    if (clearChoice === undefined) return;
-
-    const credBu = `${credential}/${bu}`;
-
-    if (deKeys) {
-        const arguments_ = buildImportArguments(
-            credBu,
+    const intent = captureImportIntent(
+        projectRoot,
+        buildImportArguments(
+            `${credential}/${bu}`,
             {
                 deKeys,
-                mode,
-                backupBeforeImport,
-                skipEmptyLines: config.get<boolean>('skipEmptyLines') === true,
-                clearBeforeImport: clearChoice.clearBeforeImport,
-                acceptClearRisk: clearChoice.acceptClearRisk,
-            },
-            isUseGit
-        );
-        await runMcdataWithProgress(context, projectRoot, arguments_, {
-            progressTitle: 'SFMC Data — Import',
-            telemetryCommand: 'sfmc-data.importDE',
-        });
-    } else if (filePaths) {
-        const arguments_ = buildImportArguments(
-            credBu,
-            {
                 filePaths,
                 mode,
                 backupBeforeImport,
                 skipEmptyLines: config.get<boolean>('skipEmptyLines') === true,
-                clearBeforeImport: clearChoice.clearBeforeImport,
-                acceptClearRisk: clearChoice.acceptClearRisk,
+                clearBeforeImport: false,
+                acceptClearRisk: false,
             },
             isUseGit
-        );
-        await runMcdataWithProgress(context, projectRoot, arguments_, {
-            progressTitle: 'SFMC Data — Import',
-            telemetryCommand: 'sfmc-data.importDE',
-        });
-    }
+        )
+    );
+    const clearChoice = await promptOptionalClearBeforeImport(config, intent);
+    if (clearChoice === undefined) return;
+    const submitted = [...intent.arguments];
+    if (clearChoice.clearBeforeImport)
+        submitted.push('--clear-before-import', '--i-accept-clear-data-risk');
+    await runMcdataWithProgress(context, intent.projectRoot, submitted, {
+        progressTitle: 'SFMC Data — Import',
+        telemetryCommand: 'sfmc-data.importDE',
+    });
 }

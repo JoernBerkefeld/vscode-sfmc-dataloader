@@ -1,9 +1,17 @@
 # Changelog
 
-## [2.1.2] — 2026-10-25
+## [2.2.0] — 2026-10-27
+
+### Added
+
+- Add project-scoped `sfmcData.jsonPretty` and `sfmcData.maxRowsPerFile` export settings across palette, context, and multi-BU routes.
+- Offer searchable, multi-select DE lists with automatic cache loading for single-BU export/import and cross-BU API import; retain manual key entry.
+- Identify concurrent runs with per-run output tags, START/END entries, project/BU context, independent cancellation, and an active-run status bar count.
 
 ### Fixed
 
+- Confirm every import against captured project/arguments, showing targets, keys/files, mode, backup, and skip-empty-lines options. Require exact typed `CLEAR` for row deletion; dismissing prompts cancels the submitted import.
+- Warn before explicit-file imports of 1 GiB or larger and reject unreadable selections. Clarify that cancellation stops local execution but cannot undo or guarantee stopping remote work already accepted by Salesforce.
 - Report malformed project and authentication JSON using filename-only errors without exposing JSON excerpts. Public project discovery does not parse authentication contents; operations requiring authentication still validate it.
 
 ### Dependencies

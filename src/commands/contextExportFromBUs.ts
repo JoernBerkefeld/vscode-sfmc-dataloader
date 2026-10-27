@@ -3,6 +3,7 @@ import {
     selectProjectRoot,
     getProjectConfiguration as getProjectConfig,
     readProjectConfig,
+    getExportFileOptions,
 } from '../config';
 import { getAllCredBus } from '../mcdevrcParser';
 import { runMcdataWithProgress } from '../runMcdata';
@@ -73,7 +74,10 @@ async function contextExportFromBUs(
     const format = config.get<string>('defaultFormat') ?? 'csv';
     const isUseGit = config.get<boolean>('useGitFilenames') === true;
 
+    const exportOptions = getExportFileOptions(config);
+    if (!exportOptions) return;
     const arguments_ = buildMultiBuExportArguments({
+        ...exportOptions,
         fromCredBus,
         deKeys,
         format,

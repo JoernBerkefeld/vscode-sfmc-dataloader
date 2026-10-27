@@ -8,6 +8,60 @@ import {
     buildFileToMultiBuImportArguments,
 } from '../argbuilder';
 
+describe('export file options', () => {
+    const builders = [
+        (format: string, options: { jsonPretty?: boolean; maxRowsPerFile?: number | null }) =>
+            buildExportArguments('org/bu', ['K'], format, false, options),
+        (format: string, options: { jsonPretty?: boolean; maxRowsPerFile?: number | null }) =>
+            buildMultiBuExportArguments({
+                fromCredBus: ['org/bu'],
+                deKeys: ['K'],
+                format,
+                ...options,
+            }),
+    ];
+    for (const [index, build] of builders.entries()) {
+        for (const format of ['csv', 'tsv', 'json']) {
+            it(`builder ${index} preserves ${format} defaults and limits pretty to JSON`, () => {
+                const defaults = build(format, {});
+                assert.ok(!defaults.includes('--json-pretty'));
+                assert.ok(!defaults.includes('--max-rows-per-file'));
+                assert.deepEqual(
+                    build(format, { jsonPretty: false, maxRowsPerFile: null }),
+                    defaults
+                );
+                const flags = build(format, { jsonPretty: true, maxRowsPerFile: 123 });
+                assert.equal(flags.includes('--json-pretty'), format === 'json');
+                assert.equal(flags[flags.indexOf('--max-rows-per-file') + 1], '123');
+            });
+        }
+        for (const value of [
+            0,
+            -1,
+            1.5,
+            NaN,
+            Infinity,
+            Number.MAX_SAFE_INTEGER + 1,
+            '12',
+            '',
+            true,
+        ]) {
+            it(`builder ${index} rejects split size ${String(value)}`, () => {
+                assert.throws(
+                    () => build('csv', { maxRowsPerFile: value as number }),
+                    /positive safe integer/
+                );
+            });
+        }
+        for (const value of [1, Number.MAX_SAFE_INTEGER]) {
+            it(`builder ${index} accepts split boundary ${value}`, () => {
+                const flags = build('json', { maxRowsPerFile: value });
+                assert.equal(flags[flags.indexOf('--max-rows-per-file') + 1], String(value));
+            });
+        }
+    }
+});
+
 describe('buildExportArgs', () => {
     it('produces export subcommand with a single DE key', () => {
         const arguments_ = buildExportArguments('myOrg/myBU', ['DE_Key_1'], 'csv');

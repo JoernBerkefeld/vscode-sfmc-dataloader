@@ -32,12 +32,25 @@ describe('workspace capability manifest', () => {
             'skipEmptyLines',
             'importMode',
             'defaultFormat',
+            'jsonPretty',
+            'maxRowsPerFile',
             'backupBeforeImport',
             'createDebugLog',
         ];
         for (const setting of resourceSettings) {
             assert.equal(properties[`sfmcData.${setting}`].scope, 'resource', setting);
         }
+    });
+
+    it('declares safe export option defaults and split bounds', () => {
+        const pretty = properties['sfmcData.jsonPretty'];
+        assert.equal(pretty.type, 'boolean');
+        assert.equal(pretty.default, false);
+        const split = properties['sfmcData.maxRowsPerFile'];
+        assert.deepEqual(split.type, ['integer', 'null']);
+        assert.equal(split.default, null);
+        assert.equal(split.minimum, 1);
+        assert.equal(split.maximum, Number.MAX_SAFE_INTEGER);
     });
 
     it('keeps executable paths machine-specific but folder-overridable', () => {

@@ -289,6 +289,20 @@
                     "default": "csv",
                     "description": "Default file format for exports. Import format is detected automatically from the file extension."
                 },
+                "sfmcData.jsonPretty": {
+                    "scope": "resource",
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Pretty-print JSON exports (--json-pretty). Ignored for CSV and TSV."
+                },
+                "sfmcData.maxRowsPerFile": {
+                    "scope": "resource",
+                    "type": ["integer", "null"],
+                    "minimum": 1,
+                    "maximum": 9007199254740991,
+                    "default": null,
+                    "description": "Maximum data rows per export file (--max-rows-per-file). Use a positive safe integer, or null to keep exports unsplit."
+                },
                 "sfmcData.backupBeforeImport": {
                     "scope": "resource",
                     "type": "string",

@@ -33,6 +33,9 @@ const state = {
     activeUri: undefined as vscode.Uri | undefined,
     picked: undefined as vscode.WorkspaceFolder | undefined,
     pickerCalls: 0,
+    errors: [] as string[],
+    action: undefined as string | undefined,
+    commands: [] as string[],
     diskCalls: [] as string[],
     settingResource: undefined as vscode.Uri | undefined,
 };
@@ -51,7 +54,16 @@ const host = {
             return { get: () => true };
         },
     },
+    commands: {
+        executeCommand: async (id: string) => {
+            state.commands.push(id);
+        },
+    },
     window: {
+        showErrorMessage: async (message: string) => {
+            state.errors.push(message);
+            return state.action;
+        },
         get activeTextEditor() {
             return state.activeUri ? { document: { uri: state.activeUri } } : undefined;
         },
@@ -87,6 +99,9 @@ describe('project selection', () => {
         state.activeUri = undefined;
         state.picked = undefined;
         state.pickerCalls = 0;
+        state.errors = [];
+        state.commands = [];
+        state.action = undefined;
         state.diskCalls = [];
         state.settingResource = undefined;
         mock.method(filesystem, 'existsSync', (filename: string) => {
@@ -126,6 +141,8 @@ describe('project selection', () => {
         state.picked = undefined;
         assert.equal(await config.selectProjectRoot(folders, 'palette'), undefined);
         assert.equal(state.pickerCalls, 2);
+        assert.deepEqual(state.errors, []);
+        assert.deepEqual(state.commands, []);
     });
 
     it('automatically chooses the sole configured project and handles no configured projects', async () => {
@@ -135,6 +152,16 @@ describe('project selection', () => {
         assert.equal(await config.selectProjectRoot(folders, 'palette'), undefined);
         assert.equal(await config.selectProjectRoot(undefined, 'palette'), undefined);
         assert.equal(state.pickerCalls, 0);
+    });
+
+    it('offers initialization only for missing palette projects, and respects dismissal', async () => {
+        configured.clear();
+        assert.equal(await config.selectProjectRoot(folders, 'palette'), undefined);
+        assert.match(state.errors[0], /No SFMC project config.*Initialize Project/);
+        assert.deepEqual(state.commands, []);
+        state.action = 'Initialize Project';
+        assert.equal(await config.selectProjectRoot(folders, 'palette'), undefined);
+        assert.deepEqual(state.commands, ['sfmc-data.initProject']);
     });
 
     it('accepts a same-root multi-selection supplied without a primary URI', async () => {

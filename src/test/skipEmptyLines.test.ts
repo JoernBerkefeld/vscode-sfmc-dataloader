@@ -2,6 +2,7 @@ import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import Module from 'node:module';
 import { readFileSync } from 'node:fs';
+import { captureImportIntent } from '../importClearPrompts';
 import path from 'node:path';
 import {
     buildImportArguments,
@@ -104,7 +105,10 @@ describe('skipEmptyLines import command routes', () => {
                         showQuickPick: async (
                             _items: unknown,
                             options: { canPickMany?: boolean }
-                        ) => (options.canPickMany ? [{ label: 'bu' }] : { method: route }),
+                        ) =>
+                            options.canPickMany
+                                ? [{ label: 'bu' }]
+                                : { method: route, source: 'manual' },
                         showInputBox: async () => 'key',
                         showOpenDialog: async () => [{ fsPath: 'file.csv' }],
                         showErrorMessage: (message: string) => assert.fail(message),
@@ -133,7 +137,10 @@ describe('skipEmptyLines import command routes', () => {
                     },
                     '../importMode': { resolveImportWriteMode: async () => 'upsert' },
                     '../importBackupPrompt': { resolveBackupBeforeImport: async () => false },
-                    '../importClearPrompts': { promptOptionalClearBeforeImport: async () => base },
+                    '../importClearPrompts': {
+                        captureImportIntent,
+                        promptOptionalClearBeforeImport: async () => base,
+                    },
                     './contextUtilities': {
                         resolveContextFiles: () => ({
                             parsed: [{ type: route, filePath: 'file.csv', deKey: 'key' }],
@@ -141,6 +148,9 @@ describe('skipEmptyLines import command routes', () => {
                         }),
                     },
                 };
+                dependencies['./config'] = dependencies['../config'];
+                const pickerPath = require.resolve('../deKeyPicker');
+                delete require.cache[pickerPath];
                 const replacement = mock.method(
                     loadable,
                     '_load',
@@ -163,6 +173,7 @@ describe('skipEmptyLines import command routes', () => {
                 } finally {
                     replacement.mock.restore();
                     delete require.cache[modulePath];
+                    delete require.cache[pickerPath];
                 }
             });
         }

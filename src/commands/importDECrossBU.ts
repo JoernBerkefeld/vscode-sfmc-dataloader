@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { selectDeKeys } from '../deKeyPicker';
 import {
     selectProjectRoot,
     getProjectConfiguration as getProjectConfig,
@@ -7,7 +8,7 @@ import {
 import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
 import { runMcdataWithProgress } from '../runMcdata';
 import { buildCrossBuImportArguments } from '../argbuilder';
-import { promptOptionalClearBeforeImport } from '../importClearPrompts';
+import { captureImportIntent, promptOptionalClearBeforeImport } from '../importClearPrompts';
 import { resolveImportWriteMode } from '../importMode';
 import { resolveBackupBeforeImport } from '../importBackupPrompt';
 
@@ -88,19 +89,14 @@ async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> 
     );
     if (!selectedTargetBUs || selectedTargetBUs.length === 0) return;
 
-    const deInput = await vscode.window.showInputBox({
-        title: 'SFMC Data — Import (Cross-BU) — DE key(s)',
-        prompt: 'Enter one or more DE customer keys (comma-separated)',
-        placeHolder: 'My_DE_Key, Another_DE_Key',
-        ignoreFocusOut: true,
-        validateInput: (v) => (v.trim() ? undefined : 'At least one DE key is required'),
-    });
-    if (!deInput?.trim()) return;
-
-    const deKeys = deInput
-        .split(',')
-        .map((k) => k.trim())
-        .filter(Boolean);
+    const deKeys = await selectDeKeys(
+        projectRoot,
+        sourceCredential,
+        sourceBU,
+        'SFMC Data — Import (Cross-BU) — DE keys',
+        `Source BU ${sourceCredential}/${sourceBU} supplies the API copy`
+    );
+    if (!deKeys) return;
 
     const config = getProjectConfig(projectRoot);
     const isUseGit = config.get<boolean>('useGitFilenames') === true;
@@ -111,9 +107,6 @@ async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> 
     const backupBeforeImport = await resolveBackupBeforeImport(config);
     if (backupBeforeImport === undefined) return;
 
-    const clearChoice = await promptOptionalClearBeforeImport(config);
-    if (clearChoice === undefined) return;
-
     const arguments_ = buildCrossBuImportArguments({
         fromCredBu: `${sourceCredential}/${sourceBU}`,
         toCredBus: selectedTargetBUs.map(({ label }) => `${tgtCredential}/${label}`),
@@ -121,11 +114,17 @@ async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> 
         mode,
         backupBeforeImport,
         skipEmptyLines: config.get<boolean>('skipEmptyLines') === true,
-        clearBeforeImport: clearChoice.clearBeforeImport,
-        acceptClearRisk: clearChoice.acceptClearRisk,
+        clearBeforeImport: false,
+        acceptClearRisk: false,
         useGit: isUseGit,
     });
-    await runMcdataWithProgress(context, projectRoot, arguments_, {
+    const intent = captureImportIntent(projectRoot, arguments_);
+    const clearChoice = await promptOptionalClearBeforeImport(config, intent);
+    if (!clearChoice) return;
+    const submitted = [...intent.arguments];
+    if (clearChoice.clearBeforeImport)
+        submitted.push('--clear-before-import', '--i-accept-clear-data-risk');
+    await runMcdataWithProgress(context, intent.projectRoot, submitted, {
         progressTitle: 'SFMC Data — Import (Cross-BU)',
         telemetryCommand: 'sfmc-data.importDECrossBU',
     });

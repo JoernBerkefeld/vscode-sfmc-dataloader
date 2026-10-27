@@ -16,14 +16,18 @@ export type ImportOptions = {
     skipEmptyLines?: boolean;
 };
 
-export type MultiBuExportOptions = {
+export type ExportFileOptions = {
+    jsonPretty?: boolean;
+    maxRowsPerFile?: number | null;
+};
+
+export type MultiBuExportOptions = ExportFileOptions & {
     /**
      * `<credential>/<businessUnit>` tokens — maps to repeated `--from` flags
      */
     fromCredBus: string[];
     deKeys: string[];
     format: string;
-    jsonPretty?: boolean;
     useGit?: boolean;
 };
 
@@ -74,13 +78,15 @@ export type CrossBuImportOptions = {
  * @param deKeys - one or more DE customer keys
  * @param format - csv | tsv | json
  * @param shouldUseGit - when true, append `--git` for stable `*.mcdata.<ext>` filenames
+ * @param options - optional JSON formatting and file splitting settings
  * @returns {string[]} argv tokens for the mcdata subprocess
  */
 export function buildExportArguments(
     credBu: string,
     deKeys: string[],
     format: string,
-    shouldUseGit?: boolean
+    shouldUseGit?: boolean,
+    options: ExportFileOptions = {}
 ): string[] {
     const arguments_: string[] = ['export', credBu, '--format', format];
     if (shouldUseGit) {
@@ -89,7 +95,47 @@ export function buildExportArguments(
     for (const key of deKeys) {
         arguments_.push('--de', key);
     }
+    pushExportFileFlags(arguments_, format, options);
     return arguments_;
+}
+
+/**
+ * Checks a configured export split size without coercing strings or fractions.
+ * @param value - Optional maximum data rows per file.
+ * @returns {void}
+ * @throws {Error} When a supplied value is not a positive safe integer.
+ */
+export function validateMaxRowsPerFile(value: unknown): void {
+    if (
+        value !== undefined &&
+        value !== null &&
+        (!Number.isSafeInteger(value) || Number(value) <= 0)
+    ) {
+        throw new Error(
+            'sfmcData.maxRowsPerFile must be a positive safe integer or null (no splitting).'
+        );
+    }
+}
+
+/**
+ * Appends export-only flags shared by single- and multi-BU builders.
+ * @param arguments_ - CLI arguments to extend.
+ * @param format - Selected output format.
+ * @param options - Formatting and splitting settings.
+ * @returns {void}
+ */
+function pushExportFileFlags(
+    arguments_: string[],
+    format: string,
+    options: ExportFileOptions
+): void {
+    validateMaxRowsPerFile(options.maxRowsPerFile);
+    if (format === 'json' && options.jsonPretty === true) {
+        arguments_.push('--json-pretty');
+    }
+    if (options.maxRowsPerFile !== undefined && options.maxRowsPerFile !== null) {
+        arguments_.push('--max-rows-per-file', String(options.maxRowsPerFile));
+    }
 }
 
 /**
@@ -108,9 +154,7 @@ export function buildMultiBuExportArguments(options: MultiBuExportOptions): stri
     for (const key of options.deKeys) {
         arguments_.push('--de', key);
     }
-    if (options.jsonPretty) {
-        arguments_.push('--json-pretty');
-    }
+    pushExportFileFlags(arguments_, options.format, options);
     return arguments_;
 }
 

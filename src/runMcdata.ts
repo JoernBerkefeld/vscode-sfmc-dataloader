@@ -7,7 +7,12 @@ import { appendMcdataDebugArgument } from './mcdataDebugArguments';
 import { resolveMcdataLaunch } from './mcdataPrefix';
 import { buildMcdataCommandDisplay } from './mcdataShellCommand';
 import type { McdataLaunch } from './mcdataResolve';
-import { getSfmcDataOutputChannel } from './sfmcDataOutput';
+import {
+    beginMcdataRun,
+    createTaggedMcdataOutput,
+    getSfmcDataOutputChannel,
+} from './sfmcDataOutput';
+import path from 'node:path';
 import { getReporter } from './telemetry';
 
 /**
@@ -40,6 +45,8 @@ export async function runMcdataWithProgress(
         suppressSuccessNotification?: boolean;
     }
 ): Promise<McdataRunOutcome> {
+    // Snapshot before launcher resolution yields, matching the submitted operation.
+    arguments_ = [...arguments_];
     const startedAt = Date.now();
     const prefix = await resolveMcdataLaunch(context, projectRoot);
     if (prefix === undefined) {
@@ -59,26 +66,35 @@ export async function runMcdataWithProgress(
     );
     const outputChannel = getSfmcDataOutputChannel();
 
-    const outcome = await vscode.window.withProgress<McdataProcessOutcome>(
-        {
-            location: vscode.ProgressLocation.Notification,
-            title: options.progressTitle,
-            cancellable: true,
-        },
-        async (progress, token) => {
-            progress.report({ message: 'Running mcdata…' });
-            outputChannel.appendLine(`⚡ ${commandLine}`);
-            outputChannel.appendLine('');
-            return executeMcdata(
-                projectRoot,
-                prefix,
-                finalArguments,
-                outputChannel,
-                token,
-                progress
-            );
-        }
-    );
+    const run = beginMcdataRun();
+    const runLabel = `${run.tag} ${buildMcdataRunContext(projectRoot, finalArguments, diagnostics.redact)}`;
+    const runOutput = createTaggedMcdataOutput(outputChannel, run.tag);
+    let outcome: McdataProcessOutcome;
+    runOutput.appendLine(`START ${runLabel} — ${diagnostics.redact(options.progressTitle)}`);
+    runOutput.appendLine(commandLine);
+    try {
+        outcome = await vscode.window.withProgress<McdataProcessOutcome>(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: `${diagnostics.redact(options.progressTitle)} — ${runLabel}`,
+                cancellable: true,
+            },
+            async (progress, token) => {
+                progress.report({ message: 'Running mcdata…' });
+                return executeMcdata(
+                    projectRoot,
+                    prefix,
+                    finalArguments,
+                    runOutput,
+                    token,
+                    progress
+                );
+            }
+        );
+        runOutput.appendLine(`END ${runLabel} — ${outcome.status}`);
+    } finally {
+        run.dispose();
+    }
 
     const extras: { durationMs: number; error?: Error; errorCode?: number | null } = {
         durationMs: Date.now() - startedAt,
@@ -103,7 +119,7 @@ export async function runMcdataWithProgress(
         case 'success': {
             if (options.suppressSuccessNotification) break;
             const choice = await vscode.window.showInformationMessage(
-                'SFMC Data Loader: mcdata finished successfully.',
+                `SFMC Data Loader ${runLabel}: mcdata finished successfully.`,
                 MORE_DETAILS
             );
             if (choice === MORE_DETAILS) {
@@ -114,7 +130,7 @@ export async function runMcdataWithProgress(
         case 'failed': {
             const code = outcome.exitCode;
             const choice = await vscode.window.showErrorMessage(
-                `SFMC Data Loader: mcdata exited with code ${code === null ? 'unknown' : String(code)}.`,
+                `SFMC Data Loader ${runLabel}: mcdata exited with code ${code === null ? 'unknown' : String(code)}.`,
                 MORE_DETAILS
             );
             if (choice === MORE_DETAILS) {
@@ -124,7 +140,7 @@ export async function runMcdataWithProgress(
         }
         case 'cancelled': {
             const choice = await vscode.window.showWarningMessage(
-                'SFMC Data Loader: mcdata was cancelled.',
+                `SFMC Data Loader ${runLabel}: local mcdata process cancelled. Remote work already accepted may continue.`,
                 MORE_DETAILS
             );
             if (choice === MORE_DETAILS) {
@@ -134,7 +150,7 @@ export async function runMcdataWithProgress(
         }
         case 'spawn_error': {
             const choice = await vscode.window.showErrorMessage(
-                `SFMC Data Loader: failed to start mcdata (${outcome.message}).`,
+                `SFMC Data Loader ${runLabel}: failed to start mcdata (${outcome.message}).`,
                 MORE_DETAILS
             );
             if (choice === MORE_DETAILS) {
@@ -144,6 +160,48 @@ export async function runMcdataWithProgress(
         }
     }
     return outcome;
+}
+
+/**
+ * Builds bounded, redacted project and BU context from the submitted CLI arguments.
+ * @param projectRoot - Submitted project directory.
+ * @param arguments_ - Submitted CLI argv.
+ * @param redact - Credential scrubber shared with command output.
+ * @returns {string} Identifiable project and source/target summary.
+ */
+export function buildMcdataRunContext(
+    projectRoot: string,
+    arguments_: string[],
+    redact: (text: string) => string
+): string {
+    const compact = (value: string): string => {
+        const safe = redact(value).replaceAll(/[\r\n\t]/g, ' ');
+        return safe.length > 120 ? `${safe.slice(0, 117)}…` : safe;
+    };
+    const sources: string[] = [];
+    const targets: string[] = [];
+    for (let index = 1; index < arguments_.length; index++) {
+        const flag = arguments_[index];
+        if (flag === '--from' || flag === '--to') {
+            const value = arguments_[++index];
+            if (value) (flag === '--from' ? sources : targets).push(value);
+        }
+    }
+    const positional = arguments_[1];
+    const summary = (values: string[]): string =>
+        values.slice(0, 2).map(compact).join(', ') +
+        (values.length > 2 ? ` (+${values.length - 2} more)` : '');
+    const parts = [`Project ${compact(path.basename(projectRoot) || projectRoot)}`];
+    if (
+        positional &&
+        !positional.startsWith('--') &&
+        ['import', 'export'].includes(arguments_[0])
+    ) {
+        parts.push(`BU ${compact(positional)}`);
+    }
+    if (sources.length) parts.push(`from ${summary(sources)}`);
+    if (targets.length) parts.push(`to ${summary(targets)}`);
+    return parts.join(' | ');
 }
 
 /**
@@ -280,7 +338,7 @@ async function executeMcdata(
     cwd: string,
     launch: McdataLaunch,
     arguments_: string[],
-    channel: vscode.OutputChannel,
+    channel: Pick<vscode.OutputChannel, 'append' | 'appendLine'>,
     token: vscode.CancellationToken,
     progress: vscode.Progress<{ message?: string; increment?: number }>
 ): Promise<McdataProcessOutcome> {

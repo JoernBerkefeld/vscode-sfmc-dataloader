@@ -5,7 +5,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type * as vscode from 'vscode';
 import type { McdataProcessOutcome } from '../mcdataProcessLifecycle';
-import { createBatchProgressLineHandler, createBoundedProgressParser } from '../runMcdata';
+import {
+    buildMcdataRunContext,
+    createBatchProgressLineHandler,
+    createBoundedProgressParser,
+} from '../runMcdata';
+import * as runOutput from '../sfmcDataOutput';
 
 /**
  * Runs real init and progress helpers with only host/process boundaries mocked.
@@ -25,6 +30,7 @@ async function invoke(
     const logs: string[] = [];
     const infos: string[] = [];
     const errors: string[] = [];
+    const warnings: string[] = [];
     const settings: string[] = [];
     const runs: string[][] = [];
     const answers = ['org', clientId, secret, 'https://example.invalid/', '123'];
@@ -51,7 +57,10 @@ async function invoke(
         ProgressLocation: { Notification: 15 },
         window: {
             showInputBox: async () => answers.shift(),
-            showWarningMessage: async () => 'Override',
+            showWarningMessage: async (message: string) => {
+                warnings.push(message);
+                return 'Override';
+            },
             showQuickPick: async () => {
                 throw new Error('Only one file root; no picker needed');
             },
@@ -96,6 +105,7 @@ async function invoke(
             },
         },
         './sfmcDataOutput': {
+            ...runOutput,
             getSfmcDataOutputChannel: () => ({
                 append: (text: string) => {
                     logs.push(text);
@@ -162,7 +172,13 @@ async function invoke(
             'Full redacted output is not truncated by progress parsing'
         );
     }
-    return { infos, runs, errors };
+    assert.equal(runOutput.getActiveMcdataRunCount(), 0);
+    if (runs.length) {
+        assert.match(logs.join('\n'), /\[run \d+\] START .*Project synthetic-init-project/);
+        assert.match(logs.join('\n'), /\[run \d+\] END .* — /);
+        assert.ok(logs.every((line) => /^\[run \d+\] /.test(line)));
+    }
+    return { infos, runs, errors, warnings };
 }
 
 describe('init composed with the real run helper', () => {
@@ -172,7 +188,19 @@ describe('init composed with the real run helper', () => {
         { status: 'spawn_error', message: 'synthetic' },
     ] as McdataProcessOutcome[]) {
         it(`never reports success for ${outcome.status} with an existing config`, async () => {
-            assert.deepEqual((await invoke(outcome)).infos, []);
+            const result = await invoke(outcome);
+            assert.deepEqual(result.infos, []);
+            if (outcome.status === 'cancelled') {
+                assert.match(
+                    result.warnings.at(-1) ?? '',
+                    /\[run \d+\].*Project synthetic-init-project/
+                );
+                assert.match(result.warnings.at(-1) ?? '', /local mcdata process cancelled/);
+                assert.match(
+                    result.warnings.at(-1) ?? '',
+                    /Remote work already accepted may continue/
+                );
+            }
         });
     }
     it('does not report success or launch on resolution failure', async () => {
@@ -192,6 +220,34 @@ describe('init composed with the real run helper', () => {
 
 it('redacts equals-form sensitive flags in output and failure diagnostics without changing argv', async () => {
     await invoke({ status: 'spawn_error', message: 'synthetic' }, true, true);
+});
+
+const redactContext = (value: string) => value.replaceAll('secret', '[REDACTED]');
+
+it('summarizes single and cross-BU context without unbounded or secret labels', () => {
+    assert.equal(
+        buildMcdataRunContext('/projects/shop', ['export', 'org/BU'], redactContext),
+        'Project shop | BU org/BU'
+    );
+    const label = buildMcdataRunContext(
+        '/projects/shop',
+        [
+            'import',
+            '--from',
+            'org/source',
+            '--to',
+            'secret/one',
+            '--to',
+            'org/two',
+            '--to',
+            'org/three',
+        ],
+        redactContext
+    );
+    assert.equal(label, 'Project shop | from org/source | to [REDACTED]/one, org/two (+1 more)');
+    assert.ok(
+        buildMcdataRunContext('/projects/' + 'x'.repeat(1000), ['init'], redactContext).length < 140
+    );
 });
 
 describe('bounded progress parser', () => {

@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
 import { buildMcdataStatusTooltipMarkdown } from './statusBarMcdataTooltip';
-import { getSfmcDataOutputChannel } from './sfmcDataOutput';
+import {
+    getActiveMcdataRunCount,
+    getSfmcDataOutputChannel,
+    onMcdataRunsChanged,
+} from './sfmcDataOutput';
 
 /**
  * Tooltip for the mcdata status bar item: Show Output link + Settings link (mcdev-style, no caching section).
@@ -27,7 +31,12 @@ export function registerMcdataStatusBar(context: vscode.ExtensionContext): void 
 
     const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     item.name = 'SFMC Data Loader — mcdata';
-    item.text = '$(database) mcdata';
+    const update = (): void => {
+        const count = getActiveMcdataRunCount();
+        item.text = count > 0 ? `$(sync~spin) mcdata (${count} active)` : '$(database) mcdata';
+    };
+    update();
+    context.subscriptions.push(onMcdataRunsChanged(update));
     item.tooltip = buildMcdataStatusTooltip();
     item.command = 'sfmc-data.openOutputChannel';
     item.show();

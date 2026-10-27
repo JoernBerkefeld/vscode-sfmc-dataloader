@@ -144,7 +144,9 @@ describe('deCache', () => {
             '../commandTelemetry': {},
             '../telemetry': {},
         };
+        dependencies['./config'] = dependencies['../config'];
         const modules = [
+            require.resolve('../deKeyPicker'),
             require.resolve('../commands/exportDE'),
             require.resolve('../commands/refreshDeCache'),
         ];
@@ -160,7 +162,7 @@ describe('deCache', () => {
         );
         try {
             // eslint-disable-next-line @typescript-eslint/no-require-imports -- Compose real export, refresh and cache logic with host and network I/O mocked.
-            const loaded = require(modules[0]);
+            const loaded = require(modules[1]);
             loaded.registerExportCommand({ subscriptions: [] });
             assert.ok(command);
             await command();
@@ -174,7 +176,11 @@ describe('deCache', () => {
             assert.equal(fetches, 3);
             assert.deepEqual(
                 errors,
-                Array.from({ length: 4 }, () => 'No Data Extensions found for this Business Unit.')
+                Array.from(
+                    { length: 4 },
+                    () =>
+                        'No Data Extensions found for org/bu. Run SFMC Data: Refresh DE Cache to retry, or restart this command and enter DE keys manually.'
+                )
             );
         } finally {
             replacement.mock.restore();

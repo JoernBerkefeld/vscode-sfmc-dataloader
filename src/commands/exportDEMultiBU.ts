@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
+import { promptDeKeys } from '../deKeyPicker';
 import {
     selectProjectRoot,
     getProjectConfiguration as getProjectConfig,
     readProjectConfig,
+    getExportFileOptions,
 } from '../config';
 import { getCredentials, getBusinessUnits } from '../mcdevrcParser';
 import { runMcdataWithProgress } from '../runMcdata';
@@ -59,26 +61,18 @@ async function exportDEMultiBU(context: vscode.ExtensionContext): Promise<void> 
     );
     if (!selectedBUs || selectedBUs.length === 0) return;
 
-    const deInput = await vscode.window.showInputBox({
-        title: 'SFMC Data — Export DE key(s)',
-        prompt: 'Enter one or more DE customer keys (comma-separated)',
-        placeHolder: 'My_DE_Key, Another_DE_Key',
-        ignoreFocusOut: true,
-        validateInput: (v) => (v.trim() ? undefined : 'At least one DE key is required'),
-    });
-    if (!deInput?.trim()) return;
-
-    const deKeys = deInput
-        .split(',')
-        .map((k) => k.trim())
-        .filter(Boolean);
+    const deKeys = await promptDeKeys('SFMC Data — Export DE key(s)');
+    if (!deKeys) return;
 
     const config = getProjectConfig(projectRoot);
     const format = config.get<string>('defaultFormat') ?? 'csv';
     const isUseGit = config.get<boolean>('useGitFilenames') === true;
 
     const fromCredBus = selectedBUs.map(({ label }) => `${credential}/${label}`);
+    const exportOptions = getExportFileOptions(config);
+    if (!exportOptions) return;
     const arguments_ = buildMultiBuExportArguments({
+        ...exportOptions,
         fromCredBus,
         deKeys,
         format,

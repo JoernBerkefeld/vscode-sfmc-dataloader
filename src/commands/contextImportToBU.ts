@@ -8,7 +8,7 @@ import { getAllCredBus } from '../mcdevrcParser';
 import { runMcdataWithProgress } from '../runMcdata';
 import { buildCrossBuImportArguments, buildFileToMultiBuImportArguments } from '../argbuilder';
 import { resolveContextFiles } from './contextUtilities';
-import { promptOptionalClearBeforeImport } from '../importClearPrompts';
+import { captureImportIntent, promptOptionalClearBeforeImport } from '../importClearPrompts';
 import { resolveImportWriteMode } from '../importMode';
 import { resolveBackupBeforeImport } from '../importBackupPrompt';
 
@@ -80,8 +80,7 @@ async function contextImportToBU(
     const backupBeforeImport = await resolveBackupBeforeImport(config);
     if (backupBeforeImport === undefined) return;
 
-    const clearChoice = await promptOptionalClearBeforeImport(config);
-    if (clearChoice === undefined) return;
+    const clearChoice = { clearBeforeImport: false, acceptClearRisk: false };
 
     let arguments_: string[];
     if (parsed[0].type === 'data') {
@@ -110,7 +109,13 @@ async function contextImportToBU(
             useGit: isUseGit,
         });
     }
-    await runMcdataWithProgress(context, projectRoot, arguments_, {
+    const intent = captureImportIntent(projectRoot, arguments_);
+    const confirmation = await promptOptionalClearBeforeImport(config, intent);
+    if (!confirmation) return;
+    const submitted = [...intent.arguments];
+    if (confirmation.clearBeforeImport)
+        submitted.push('--clear-before-import', '--i-accept-clear-data-risk');
+    await runMcdataWithProgress(context, intent.projectRoot, submitted, {
         progressTitle: 'SFMC Data — Import to BU',
         telemetryCommand: 'sfmc-data.contextImportToBU',
     });
