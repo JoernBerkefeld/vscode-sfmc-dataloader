@@ -36,7 +36,7 @@ export type ParsedContextFile = {
  * Recognised patterns (relative to `projectRoot`):
  * - `retrieve/<cred>/<bu>/dataExtension/<key>.dataExtension-meta.json`
  * - `retrieve/<cred>/<bu>/dataExtension/<key>.dataExtension-doc.md`
- * - `data/<cred>/<bu>/<basename>` where basename matches `sfmc-dataloader` export naming (`.mcdata.`)
+ * - `data/<cred>/<bu>/<basename>` with legacy `.mcdata.` export naming or a plain `<key>.csv`
  * @param filePath   Absolute path of the selected file.
  * @param projectRoot Absolute path of the mcdev project root.
  * @returns {ParsedContextFile | undefined} parsed components, or undefined if the path is not recognised
@@ -74,7 +74,12 @@ export function parseContextFilePath(
     // data/<cred>/<bu>/<export-basename>
     if (parts.length === 4 && parts[0] === 'data') {
         try {
-            const { customerKey: deKey, ext } = parseExportBasename(parts[3]);
+            // Plain CSV selections keep literal keys; reserved .mcdata names retain legacy parsing.
+            const basename = parts[3];
+            const { customerKey: deKey, ext } =
+                !basename.includes('.mcdata.') && /\.csv$/i.test(basename)
+                    ? { customerKey: basename.slice(0, -4), ext: 'csv' }
+                    : parseExportBasename(basename);
             if (!deKey || !['csv', 'tsv', 'json'].includes(ext)) return undefined;
             return {
                 type: 'data',

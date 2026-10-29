@@ -130,10 +130,34 @@ describe('parseContextFilePath — data files', () => {
         assert.equal(result.credBu, 'ProdCred/ProdBU');
     });
 
-    it('returns undefined for a data file without valid mcdata basename', () => {
-        const result = parseContextFilePath(abs('data', 'MyCred', 'MyBU', 'Contact_DE.csv'), ROOT);
-        assert.equal(result, undefined);
-    });
+    for (const [filename, key] of [
+        ['Contact_DE.csv', 'Contact_DE'],
+        ['Customer.List.csv', 'Customer.List'],
+        ['Customers.part1.csv', 'Customers.part1'],
+        ['Customers.mcdatabase.csv', 'Customers.mcdatabase'],
+        ['Customers.mcdata.part1.csv', 'Customers'],
+        ['Customers.CSV', 'Customers'],
+        ['Bad%ZZ.csv', 'Bad%ZZ'],
+        ['Orders%2FItem.csv', 'Orders%2FItem'],
+        ['Orders.mcdata.csv', 'Orders'],
+    ]) {
+        it(`recognises explicit CSV selection ${filename}`, () => {
+            const filePath = abs('data', 'MyCred', 'MyBU', filename);
+            const result = parseContextFilePath(filePath, ROOT);
+            assert.equal(result?.deKey, key);
+            assert.equal(result?.filePath, filePath);
+            assert.equal(result?.credBu, 'MyCred/MyBU');
+        });
+    }
+
+    for (const filename of ['.csv', 'Customers.tsv', 'Customers.json']) {
+        it(`rejects plain unsupported selection ${filename}`, () => {
+            assert.equal(
+                parseContextFilePath(abs('data', 'MyCred', 'MyBU', filename), ROOT),
+                undefined
+            );
+        });
+    }
 
     for (const filename of ['Orders.mcdata.exe', 'Bad%ZZ.mcdata.csv']) {
         it(`rejects unsupported or malformed data filename ${filename}`, () => {

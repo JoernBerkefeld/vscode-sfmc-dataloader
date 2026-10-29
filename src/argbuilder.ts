@@ -186,9 +186,9 @@ function pushBackupFlag(arguments_: string[], backupBeforeImport: boolean | unde
 export function buildFileToMultiBuImportArguments(options: FileToMultiBuImportOptions): string[] {
     const arguments_: string[] = ['import', '--mode', options.mode];
     pushBackupFlag(arguments_, options.backupBeforeImport);
-    if (options.skipEmptyLines === true) {
-        arguments_.push('--skip-empty-lines');
-    }
+    arguments_.push(
+        options.skipEmptyLines === false ? '--no-skip-empty-lines' : '--skip-empty-lines'
+    );
     if (options.useGit) {
         arguments_.push('--git');
     }
@@ -216,9 +216,9 @@ export function buildFileToMultiBuImportArguments(options: FileToMultiBuImportOp
 export function buildCrossBuImportArguments(options: CrossBuImportOptions): string[] {
     const arguments_: string[] = ['import', '--from', options.fromCredBu, '--mode', options.mode];
     pushBackupFlag(arguments_, options.backupBeforeImport);
-    if (options.skipEmptyLines === true) {
-        arguments_.push('--skip-empty-lines');
-    }
+    arguments_.push(
+        options.skipEmptyLines === false ? '--no-skip-empty-lines' : '--skip-empty-lines'
+    );
     if (options.useGit) {
         arguments_.push('--git');
     }
@@ -255,9 +255,9 @@ export function buildImportArguments(
 ): string[] {
     const arguments_: string[] = ['import', credBu, '--mode', options.mode];
     pushBackupFlag(arguments_, options.backupBeforeImport);
-    if (options.skipEmptyLines === true) {
-        arguments_.push('--skip-empty-lines');
-    }
+    arguments_.push(
+        options.skipEmptyLines === false ? '--no-skip-empty-lines' : '--skip-empty-lines'
+    );
     if (shouldUseGit) {
         arguments_.push('--git');
     }

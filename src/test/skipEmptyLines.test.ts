@@ -17,7 +17,7 @@ const base = { mode: 'upsert', clearBeforeImport: false, acceptClearRisk: false 
 
 describe('skipEmptyLines argument builders', () => {
     for (const skipEmptyLines of [undefined, false, true]) {
-        it(`emits the import flag only for true (${String(skipEmptyLines)})`, () => {
+        it(`emits an explicit import flag (${String(skipEmptyLines)})`, () => {
             const options = { ...base, skipEmptyLines };
             const results = [
                 buildImportArguments('org/bu', { ...options, deKeys: ['key'] }),
@@ -35,7 +35,8 @@ describe('skipEmptyLines argument builders', () => {
                 }),
             ];
             for (const result of results) {
-                assert.equal(result.includes('--skip-empty-lines'), skipEmptyLines === true);
+                assert.equal(result.includes('--skip-empty-lines'), skipEmptyLines !== false);
+                assert.equal(result.includes('--no-skip-empty-lines'), skipEmptyLines === false);
             }
         });
     }
@@ -53,11 +54,19 @@ describe('skipEmptyLines argument builders', () => {
             false
         );
     });
-    it('contributes a boolean setting disabled by default', () => {
+    it('contributes a boolean setting enabled by default', () => {
         const manifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
         const setting = manifest.contributes.configuration.properties['sfmcData.skipEmptyLines'];
         assert.equal(setting.type, 'boolean');
-        assert.equal(setting.default, false);
+        assert.equal(setting.default, true);
+        assert.equal(setting.scope, 'resource');
+        for (const location of ['explorer/context', 'editor/title/context', 'editor/context']) {
+            const when = manifest.contributes.menus[location][0].when;
+            assert.ok(
+                when.includes(String.raw`/.+\.[cC][sS][vV]$/`),
+                `${location} offers plain CSVs`
+            );
+        }
     });
 });
 
@@ -169,7 +178,8 @@ describe('skipEmptyLines import command routes', () => {
                     assert.ok(command, 'command registered');
                     await command();
                     assert.ok(actual, 'command executed');
-                    assert.equal(actual.includes('--skip-empty-lines'), enabled === true);
+                    assert.equal(actual.includes('--skip-empty-lines'), enabled !== false);
+                    assert.equal(actual.includes('--no-skip-empty-lines'), enabled === false);
                 } finally {
                     replacement.mock.restore();
                     delete require.cache[modulePath];

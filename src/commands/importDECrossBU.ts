@@ -113,7 +113,7 @@ async function importDECrossBU(context: vscode.ExtensionContext): Promise<void> 
         deKeys,
         mode,
         backupBeforeImport,
-        skipEmptyLines: config.get<boolean>('skipEmptyLines') === true,
+        skipEmptyLines: config.get<boolean>('skipEmptyLines') !== false,
         clearBeforeImport: false,
         acceptClearRisk: false,
         useGit: isUseGit,

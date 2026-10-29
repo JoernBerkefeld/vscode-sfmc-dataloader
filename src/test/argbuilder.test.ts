@@ -118,6 +118,7 @@ describe('buildImportArgs — by DE key', () => {
             'myOrg/myBU',
             '--mode',
             'upsert',
+            '--skip-empty-lines',
             '--de',
             'DE_Key_1',
         ]);

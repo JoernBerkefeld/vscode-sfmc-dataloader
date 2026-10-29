@@ -66,7 +66,7 @@
         "husky": "^9.1.7",
         "lint-staged": "^17.3.0",
         "prettier": "^3.9.6",
-        "sfmc-dataloader": "^3.2.0",
+        "sfmc-dataloader": "^4.0.0",
         "typescript": "^5.9.3",
         "typescript-eslint": "^8.67.0"
     },
@@ -188,21 +188,21 @@
             "explorer/context": [
                 {
                     "submenu": "sfmc-data.explorerContextMenu",
-                    "when": "resourceFilename =~ /\\.dataExtension-(meta\\.json|doc\\.md)$/ || resourceFilename =~ /\\.mcdata\\./",
+                    "when": "resourceFilename =~ /\\.dataExtension-(meta\\.json|doc\\.md)$/ || resourceFilename =~ /\\.mcdata\\./ || resourceFilename =~ /.+\\.[cC][sS][vV]$/",
                     "group": "sfmc@1"
                 }
             ],
             "editor/title/context": [
                 {
                     "submenu": "sfmc-data.explorerContextMenu",
-                    "when": "resourceFilename =~ /\\.dataExtension-(meta\\.json|doc\\.md)$/ || resourceFilename =~ /\\.mcdata\\./",
+                    "when": "resourceFilename =~ /\\.dataExtension-(meta\\.json|doc\\.md)$/ || resourceFilename =~ /\\.mcdata\\./ || resourceFilename =~ /.+\\.[cC][sS][vV]$/",
                     "group": "sfmc@1"
                 }
             ],
             "editor/context": [
                 {
                     "submenu": "sfmc-data.explorerContextMenu",
-                    "when": "resourceFilename =~ /\\.dataExtension-(meta\\.json|doc\\.md)$/ || resourceFilename =~ /\\.mcdata\\./",
+                    "when": "resourceFilename =~ /\\.dataExtension-(meta\\.json|doc\\.md)$/ || resourceFilename =~ /\\.mcdata\\./ || resourceFilename =~ /.+\\.[cC][sS][vV]$/",
                     "group": "sfmc@1"
                 }
             ],
@@ -276,8 +276,8 @@
                 "sfmcData.skipEmptyLines": {
                     "scope": "resource",
                     "type": "boolean",
-                    "default": false,
-                    "description": "Skip empty CSV/TSV records during imports (--skip-empty-lines). Does not affect exports or JSON imports."
+                    "default": true,
+                    "description": "Skip blank, whitespace-only, delimiter-only and quoted-empty CSV/TSV records during imports (--skip-empty-lines). Saved false settings are preserved and pass --no-skip-empty-lines. Automatic file-edge cleanup remains enabled. Does not affect exports or JSON imports."
                 },
                 "sfmcData.importMode": {
                     "scope": "resource",

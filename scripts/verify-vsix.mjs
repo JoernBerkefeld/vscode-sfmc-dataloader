@@ -5,6 +5,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
 
@@ -30,6 +31,7 @@ if (process.platform === 'win32') {
     }
 }
 const temporary = mkdtempSync(path.join(os.tmpdir(), 'sfmc-data-vsix-'));
+writeFileSync(path.join(temporary, 'ownership.json'), JSON.stringify({ marker: randomUUID(), retained: true }));
 const archive = path.resolve(process.argv[2] ?? path.join(root, 'sfmc-data-BETA.vsix'));
 // Fixtures are retained for diagnosis; no recursive cleanup is performed.
 await new Promise((resolve, reject) => {
@@ -74,7 +76,7 @@ const cli = path.join(temporary, 'extension/out/mcdata.bundled.cjs');
 const manifest = JSON.parse(readFileSync(path.join(temporary, 'extension/package.json'), 'utf8'));
 const sourceManifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
 assert.equal(manifest.version, sourceManifest.version);
-assert.equal(manifest.devDependencies['sfmc-dataloader'], '^3.2.0');
+assert.equal(manifest.devDependencies['sfmc-dataloader'], '^4.0.0');
 assert.equal(manifest.engines.vscode, '^1.101.0');
 assert.equal(
     manifest.contributes.configuration.properties['sfmcData.skipEmptyLines'].type,
@@ -82,11 +84,11 @@ assert.equal(
 );
 assert.equal(
     manifest.contributes.configuration.properties['sfmcData.skipEmptyLines'].default,
-    false
+    true
 );
 assert.equal(
     execFileSync(process.execPath, [cli, '--version'], { cwd: temporary, encoding: 'utf8' }).trim(),
-    '3.2.0'
+    '4.0.0'
 );
 assert.match(
     execFileSync(process.execPath, [cli, '--help'], { cwd: temporary, encoding: 'utf8' }),
@@ -142,6 +144,81 @@ for (const family of ['mcdev', 'mcdata']) {
             assert.ok(!`${result.stdout}\n${result.stderr}`.includes(sentinel));
         }
     }
+}
+// Run the extracted fallback itself with only the SDK construction replaced in memory.
+// No loader/parser rebuild or invalid-config shortcut qualifies these real import checks.
+const importCheck = path.join(temporary, 'import-check.cjs');
+writeFileSync(
+    importCheck,
+    `const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const Module = require('node:module');
+const net = require('node:net');
+net.Socket.prototype.connect = () => { throw Error('Network forbidden in VSIX verification'); };
+globalThis.fetch = () => { throw Error('Network forbidden in VSIX verification'); };
+const effects = [];
+globalThis.__vsixMockSdk = {
+ rest: {
+  get: async route => { effects.push({ type: 'get', route }); return route.endsWith('/status') ? {status:{requestStatus:'Complete'}} : {count:10}; },
+  put: async (route, body) => { effects.push({type:'upload',route,body}); return {requestId:'synthetic'}; },
+  post: async () => { throw Error('Unexpected POST'); },
+  getBulkPages: async function* () { effects.push({type:'backup'}); yield {pageItems:[]}; }
+ },
+ soap: {perform: async () => { effects.push({type:'clear'}); }}
+};
+const project = process.argv[2];
+const cli = process.argv[3];
+const mode = process.argv[4];
+const expected = [{id:'1',value:'first'},{id:'2',value:'last'}];
+const file = path.join(project, 'Customer.List.csv');
+fs.writeFileSync(path.join(project,'.mcdatarc.json'),JSON.stringify({credentials:{C:{businessUnits:{B:123}}}}));
+fs.writeFileSync(path.join(project,'.mcdata-auth.json'),JSON.stringify({C:{client_id:'synthetic',client_secret:'synthetic',auth_url:'https://example.invalid/'}}));
+fs.writeFileSync(file,'id,value,,\\n1,first,,\\n,,,\\n2,last,,\\n,,,\\n');
+const args = ['import','C/B','--project',project,'--file',file];
+if (mode === 'optout') args.push('--no-skip-empty-lines');
+if (mode === 'invalid') {
+ const late = path.join(project,'Z.csv');
+ fs.writeFileSync(late,'id,value,,\\n3,third,hidden,\\n');
+ args.push('--file',late,'--backup-before-import','--clear-before-import','--i-accept-clear-data-risk');
+}
+const originalExit = process.exit;
+process.exit = code => {
+ try {
+  assert.equal(code,mode === 'invalid' ? 1 : 0);
+  if(mode === 'invalid') assert.deepEqual(effects,[]);
+  else {
+   const uploads = effects.filter(e=>e.type==='upload');
+   assert.deepEqual(uploads.flatMap(e=>e.body.items),mode === 'optout' ? [expected[0],{id:'',value:''},expected[1]] : expected);
+   assert.ok(uploads.every(e=>e.route.includes('Customer.List')));
+   assert.ok(effects.some(e=>e.type==='get' && e.route.endsWith('/status')));
+  }
+  console.log('Extracted fallback actual import passed: '+mode);
+  originalExit(0);
+ } catch(error) { console.error(error); originalExit(1); }
+};
+const source = fs.readFileSync(cli,'utf8');
+const seam = /this\\.auth=new [\\w$]+\\([^)]*\\),this\\.rest=new [\\w$]+\\([^)]*\\),this\\.soap=new [\\w$]+\\([^)]*\\)/g;
+assert.equal([...source.matchAll(seam)].length,1,'Exactly one SDK construction seam required');
+const executable = new Module(cli,module);
+executable.filename=cli;
+executable.paths=Module._nodeModulePaths(path.dirname(cli));
+process.argv=[process.execPath,cli,...args];
+executable._compile(source.replace(seam,'Object.assign(this,globalThis.__vsixMockSdk)'),cli);
+`
+);
+for (const mode of ['default', 'optout', 'invalid']) {
+    const project = path.join(temporary, `actual-import-${mode}`);
+    mkdirSync(project);
+    const result = spawnSync(process.execPath, [importCheck, project, cli, mode], {
+        cwd: temporary,
+        encoding: 'utf8',
+        timeout: 30_000,
+    });
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.match(result.stdout, /Extracted fallback actual import passed/);
+    if (mode !== 'invalid') assert.match(result.stdout, /cleanup|removed|padding/i);
+    console.log(result.stdout.trim());
 }
 // Exercise the same loader/SDK graph used by in-process cache refresh in a relocated CJS bundle.
 const probe = path.join(temporary, 'library.cjs');

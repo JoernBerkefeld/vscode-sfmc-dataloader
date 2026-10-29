@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.0.0] — 2026-10-29
+
+### Breaking Changes
+
+- Empty CSV/TSV record skipping is enabled by default on every import route. Existing explicit user/workspace `sfmcData.skipEmptyLines: false` settings remain unchanged and send `--no-skip-empty-lines`; enabled settings send `--skip-empty-lines`.
+
+### Changed
+
+- With bundled loader 4.0.0/parser 5.0.0, skipping includes delimiter-only and quoted-empty records as well as unquoted blank/whitespace-only lines. Quoted whitespace and populated multiline fields remain data. Automatic file cleanup independently removes only the contiguous suffix of exactly empty unnamed headers and final empty records across the logical multipart input, even when optional skipping is disabled. Named and interior unnamed columns remain; any nonempty padding cell, including whitespace, is rejected before backup, clear or upload. Source files remain unchanged.
+- Physical column widths and strict quote validation still apply, including to delimiter-only/quoted-empty records at EOF; malformed records are not repaired by cleanup. With skipping disabled, trailing unquoted blank records can be trimmed, but malformed interior blanks still fail. Inputs with no retained data are rejected before side effects. Cleanup counts distinguish removed columns/trailing records from optionally skipped records and are reported once per logical source set; the same preflight policy drives counts, snapshots and uploads. Keep source files unchanged until import finishes; preflight is not a lock, transaction or rollback. JSON imports, API-to-API copies and exports gain no new cleanup behavior.
+- Explicit file imports accept plain `<key>.csv`, including dotted keys and literal `part1` suffixes, without URI-decoding. Legacy `.mcdata` names keep their existing interpretation. Conflicting plain/legacy selections for the same target are rejected by the loader; automatic discovery and export naming remain unchanged. Plain TSV/JSON names are not added.
+- Update the bundled fallback from loader 3.2.0/parser 4.3.0 in extension 2.2.0 to [loader 4.0.0](https://github.com/JoernBerkefeld/sfmc-dataloader/releases/tag/v4.0.0) with [parser 5.0.0](https://github.com/JoernBerkefeld/csv-parser/releases/tag/v5.0.0). There are no intermediate released versions in either dependency interval. Native ESM and the bundled CLI's Node.js `^22.22.2 || >=24.15.0` requirement are unchanged. Workspace/PATH/custom CLI overrides are independently managed and must support the new negative flag and input rules; this extension does not upgrade them.
+
 ## [2.2.0] — 2026-10-27
 
 ### Added
