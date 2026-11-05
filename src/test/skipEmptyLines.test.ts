@@ -62,10 +62,7 @@ describe('skipEmptyLines argument builders', () => {
         assert.equal(setting.scope, 'resource');
         for (const location of ['explorer/context', 'editor/title/context', 'editor/context']) {
             const when = manifest.contributes.menus[location][0].when;
-            assert.ok(
-                when.includes(String.raw`/.+\.[cC][sS][vV]$/`),
-                `${location} offers plain CSVs`
-            );
+            assert.ok(when.includes('[cC][sS][vV]'), `${location} offers plain CSVs`);
         }
     });
 });

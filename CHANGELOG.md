@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.1.0] — 2026-11-05
+
+### Added
+
+- Import explicitly selected plain `<key>.csv`, `<key>.tsv` and `<key>.json` files from Explorer, editor-tab and editor context menus with case-insensitive extensions. Dotted keys, percent escapes and `partN` segments remain literal: `Customer.List.TsV` targets `Customer.List`, and `Orders%2FItem.JSON` targets `Orders%2FItem`.
+
+### Changed
+
+- Adopt bundled [loader 4.1.0](https://github.com/JoernBerkefeld/sfmc-dataloader/releases/tag/v4.1.0) from loader 4.0.0 shipped in extension 3.0.0. Parser [5.0.0](https://github.com/JoernBerkefeld/csv-parser/releases/tag/v5.0.0) is unchanged; there are no intermediate loader releases. Existing cleanup/skipping defaults and Node.js `^22.22.2 || >=24.15.0` requirements are unchanged.
+- Plain filenames require explicit file selection; automatic **By DE key** discovery and export naming still use `.mcdata` conventions. Legacy names retain decoding, timestamp and multipart interpretation first. Literal keys colliding with reserved `.mcdata` naming require re-keying; there is no override. Duplicate unnumbered files and mixed plain/legacy, runs or formats for one key are rejected before side effects, with clearer filename/selection diagnostics.
+- JSON input accepts a nonempty row array or `{ "items": [...] }`; each row must be a non-null object, not an array or primitive. CSV, TSV and JSON file preflight now rejects any row whose one-row JSON `items` request envelope exceeds **5,500,000 UTF-8 bytes**, before backup, CLEAR or upload. This is a serialized body limit, not a source-file size or character limit; the 1 GiB file notice is separate. JSON parts are still parsed in full. Keep sources unchanged until completion: preflight is not a lock, transaction or rollback.
+- These capabilities ship in the bundled fallback (default `bundled`, or `auto` when no external CLI is found). Workspace/PATH/custom CLI overrides remain independently managed and must be upgraded to loader 4.1.0 or a compatible version for expanded filenames and preflight checks. The extension does not upgrade external installations.
+
 ## [3.0.0] — 2026-10-29
 
 ### Breaking Changes

@@ -8,6 +8,14 @@ declare module 'sfmc-dataloader' {
         customerKey: string;
         timestampPart: string;
         ext: string;
+        partNumber?: number;
+    };
+
+    export function resolveExplicitImportBasename(basename: string): {
+        customerKey: string;
+        timestampPart: string;
+        ext: string;
+        partNumber?: number;
     };
 
     export function reverseFilterIllegalFilenames(filename: string): string;

@@ -62,7 +62,7 @@ for (const [installed, fixture] of [
                 'Fixture must contain the upcoming public-config API, not the published baseline'
             );
             if (installed) {
-                assert.equal(manifest.version, '4.0.0');
+                assert.equal(manifest.version, '4.1.0');
                 const parserPath = path.join(
                     extensionRoot,
                     'node_modules/@joern.berkefeld/csv-parser/package.json'
@@ -76,10 +76,10 @@ for (const [installed, fixture] of [
                     lock.packages['node_modules/sfmc-dataloader'].version,
                     manifest.version
                 );
-                assert.equal(lock.packages[''].devDependencies['sfmc-dataloader'], '^4.0.0');
+                assert.equal(lock.packages[''].devDependencies['sfmc-dataloader'], '^4.1.0');
                 assert.equal(
                     lock.packages['node_modules/sfmc-dataloader'].resolved,
-                    'https://registry.npmjs.org/sfmc-dataloader/-/sfmc-dataloader-4.0.0.tgz'
+                    'https://registry.npmjs.org/sfmc-dataloader/-/sfmc-dataloader-4.1.0.tgz'
                 );
             }
             const runRoot = mkdtempSync(path.join(os.tmpdir(), 'vscode-loader-compat-'));

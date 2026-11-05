@@ -8,6 +8,22 @@ const manifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'
 const properties = manifest.contributes.configuration.properties;
 
 describe('workspace capability manifest', () => {
+    it('exposes all supported data extensions in every context menu', () => {
+        for (const menu of ['explorer/context', 'editor/title/context', 'editor/context']) {
+            const when: string = manifest.contributes.menus[menu][0].when;
+            const patterns: RegExp[] = Array.from(
+                when.matchAll(/resourceFilename =~ \/([^/]+)\//g),
+                (match) => new RegExp(match[1])
+            );
+            for (const name of ['Customer.csv', 'Customer.TsV', 'Customer.JsOn']) {
+                assert.ok(
+                    patterns.some((pattern) => pattern.test(name)),
+                    `${menu}: ${name}`
+                );
+            }
+            assert.ok(patterns.every((pattern) => !pattern.test('Customer.xml')));
+        }
+    });
     it('declares virtual workspaces unsupported with an on-disk process requirement', () => {
         const capability = manifest.capabilities.virtualWorkspaces;
         assert.equal(capability.supported, false);

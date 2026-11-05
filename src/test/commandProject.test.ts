@@ -3,8 +3,42 @@ import assert from 'node:assert/strict';
 import Module from 'node:module';
 import path from 'node:path';
 import filesystem from 'node:fs';
+import { createHash } from 'node:crypto';
 import type * as vscode from 'vscode';
-import { parseExportBasename, reverseFilterIllegalFilenames } from 'sfmc-dataloader';
+import {
+    parseExportBasename,
+    reverseFilterIllegalFilenames,
+    resolveExplicitImportBasename,
+} from 'sfmc-dataloader';
+
+let isExpandedNames = false;
+try {
+    isExpandedNames =
+        resolveExplicitImportBasename('Customer.List.TsV').customerKey === 'Customer.List' &&
+        resolveExplicitImportBasename('Customer.List.JsOn').customerKey === 'Customer.List';
+} catch {
+    // Released loader 4.0.0 does not support these formats.
+}
+const loaderEntry = require.resolve('sfmc-dataloader');
+if (process.env.SFMC_REQUIRE_EXPANDED_LOADER) {
+    const expected = process.env.SFMC_CANDIDATE_LOADER_ENTRY;
+    const hash = createHash('sha256').update(filesystem.readFileSync(loaderEntry)).digest('hex');
+    assert.ok(
+        expected && path.isAbsolute(expected),
+        'SFMC_CANDIDATE_LOADER_ENTRY must be absolute'
+    );
+    assert.equal(filesystem.realpathSync(loaderEntry), filesystem.realpathSync(expected));
+    assert.equal(hash, process.env.SFMC_CANDIDATE_LOADER_SHA256);
+    assert.ok(isExpandedNames, 'Candidate must support expanded names');
+    process.stdout.write(`Command tests candidate: ${loaderEntry} sha256=${hash}\n`);
+}
+const loaderManifest = path.join(path.dirname(loaderEntry), '..', 'package.json');
+const loaderVersion = (
+    JSON.parse(filesystem.readFileSync(loaderManifest, 'utf8')) as { version: string }
+).version;
+assert.equal(loaderVersion, '4.1.0', 'Normal tests require the adopted registry loader');
+assert.ok(isExpandedNames, 'Installed loader must support plain TSV and JSON imports');
+const isLegacyLoader = false;
 
 /**
  * Builds a disk URI for host-free command composition.
@@ -46,6 +80,9 @@ type Route = (typeof routes)[number];
  * @param selection.empty - Return an empty cache.
  * @param selection.fail - Fail cache lookup.
  * @param selection.cancel - Dismiss key-source selection.
+ * @param selection.dataFile - Selected data filename.
+ * @param selection.reject - Mix data and metadata selections.
+ * @param selection.cancelTarget - Cancel target selection.
  * @returns {Promise<object>} Captured project, settings, executions and errors.
  */
 async function invoke(
@@ -59,6 +96,9 @@ async function invoke(
         empty?: boolean;
         fail?: boolean;
         cancel?: boolean;
+        dataFile?: string;
+        reject?: boolean;
+        cancelTarget?: boolean;
     } = {}
 ) {
     const [file, registration, isContext] = route;
@@ -131,8 +171,10 @@ async function invoke(
                     pickerCalls++;
                     return scenario === 'cancel' ? undefined : items[1];
                 }
-                if (options.canPickMany)
+                if (options.canPickMany) {
+                    if (selection.cancelTarget) return;
                     return [options.title?.includes('Target BU') ? items.at(-1) : items[0]];
+                }
                 if (typeof items[0] === 'string') return items[0];
                 if (selection.cancel) return;
                 return { source: selection.list ? 'list' : 'manual', method: 'key' };
@@ -176,6 +218,7 @@ async function invoke(
         },
         'sfmc-dataloader': {
             parseExportBasename,
+            resolveExplicitImportBasename,
             reverseFilterIllegalFilenames,
             fetchDeList: async (selectedRoot: string) => {
                 fetches.push(selectedRoot);
@@ -223,6 +266,12 @@ async function invoke(
     const publicFilename = malformedConfig ?? '.mcdevrc.json';
     const sentinel = 'SECRET_JSON_SENTINEL_DO_NOT_DISCLOSE';
     const replacements = [
+        mock.method(filesystem, 'statSync', ((filename: filesystem.PathLike) => {
+            if (selection.dataFile && String(filename).endsWith(selection.dataFile)) {
+                return { size: 10 } as filesystem.Stats;
+            }
+            throw new Error('Unexpected stat');
+        }) as typeof filesystem.statSync),
         mock.method(
             filesystem,
             'existsSync',
@@ -258,7 +307,11 @@ async function invoke(
         else if (scenario === 'cross')
             await command(metadata(root), [metadata(folders[0].uri.fsPath)]);
         else if (scenario === 'virtual') await command(resource(root, 'vscode-vfs'));
-        else await command(metadata(root), [metadata(root)]);
+        else if (selection.dataFile) {
+            const selected = resource(path.join(root, 'data', 'org', 'bu', selection.dataFile));
+            const other = selection.reject ? metadata(root) : selected;
+            await command(selected, [selected, other]);
+        } else await command(metadata(root), [metadata(root)]);
         return { runs, errors, settings, reads, fetches, pickerCalls, root, lists, prompts };
     } finally {
         for (const replacement of replacements) replacement.mock.restore();
@@ -267,6 +320,68 @@ async function invoke(
 }
 
 describe('commands composed with real project selection and folder settings', () => {
+    for (const route of routes) {
+        if (route[0] !== 'contextImportDE' && route[0] !== 'contextImportToBU') continue;
+        for (const filename of ['Customer.List.TsV', 'Customer.List.JsOn']) {
+            it(
+                `${route[0]} forwards plain ${filename}`,
+                { skip: isLegacyLoader ? 'Released loader 4.0.0 supports plain CSV only' : false },
+                async () => {
+                    const result = await invoke(
+                        route,
+                        'explicit',
+                        undefined,
+                        {},
+                        { dataFile: filename }
+                    );
+                    assert.deepEqual(result.errors, []);
+                    assert.equal(result.runs.length, 1);
+                    const arguments_ = result.runs[0].arguments;
+                    assert.ok(
+                        arguments_.includes(path.join(result.root, 'data', 'org', 'bu', filename))
+                    );
+                }
+            );
+            it(
+                `${route[0]} rejects mixed selections for ${filename} without execution`,
+                { skip: isLegacyLoader ? 'Released loader 4.0.0 supports plain CSV only' : false },
+                async () => {
+                    const result = await invoke(
+                        route,
+                        'explicit',
+                        undefined,
+                        {},
+                        { dataFile: filename, reject: true }
+                    );
+                    assert.deepEqual(result.runs, []);
+                    assert.equal(result.errors.length, 1);
+                    assert.deepEqual(result.fetches, []);
+                }
+            );
+            if (route[0] === 'contextImportToBU') {
+                it(
+                    `cancelling target selection for ${filename} has no side effects`,
+                    {
+                        skip: isLegacyLoader
+                            ? 'Released loader 4.0.0 supports plain CSV only'
+                            : false,
+                    },
+                    async () => {
+                        const result = await invoke(
+                            route,
+                            'explicit',
+                            undefined,
+                            {},
+                            { dataFile: filename, cancelTarget: true }
+                        );
+                        assert.deepEqual(result.runs, []);
+                        assert.deepEqual(result.errors, []);
+                        assert.deepEqual(result.fetches, []);
+                    }
+                );
+            }
+        }
+    }
     for (const route of routes) {
         if (route[2] || route[0] === 'refreshDeCache') continue;
         for (const input of [', ,', '  ', ' ,,, ']) {

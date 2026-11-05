@@ -1,7 +1,38 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { readFileSync, realpathSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { parseContextFilePath } from '../filePathParser';
+import { resolveExplicitImportBasename } from 'sfmc-dataloader';
+
+const loaderEntry = require.resolve('sfmc-dataloader');
+if (process.env.SFMC_REQUIRE_EXPANDED_LOADER) {
+    const expected = process.env.SFMC_CANDIDATE_LOADER_ENTRY;
+    const hash = createHash('sha256').update(readFileSync(loaderEntry)).digest('hex');
+    assert.ok(
+        expected && path.isAbsolute(expected),
+        'SFMC_CANDIDATE_LOADER_ENTRY must be absolute'
+    );
+    assert.equal(realpathSync(loaderEntry), realpathSync(expected));
+    assert.equal(hash, process.env.SFMC_CANDIDATE_LOADER_SHA256);
+    assert.equal(resolveExplicitImportBasename('Customer.List.TsV').customerKey, 'Customer.List');
+    assert.equal(resolveExplicitImportBasename('Customer.List.JsOn').customerKey, 'Customer.List');
+    process.stdout.write(`Parser tests candidate: ${loaderEntry} sha256=${hash}\n`);
+}
+const loaderManifest = path.join(path.dirname(loaderEntry), '..', 'package.json');
+const loader = JSON.parse(readFileSync(loaderManifest, 'utf8')) as { version: string };
+let isExpandedNames = false;
+try {
+    isExpandedNames =
+        resolveExplicitImportBasename('Customer.List.TsV').customerKey === 'Customer.List' &&
+        resolveExplicitImportBasename('Customer.List.JsOn').customerKey === 'Customer.List';
+} catch {
+    // The released 4.0.0 resolver only accepts plain CSV.
+}
+assert.equal(loader.version, '4.1.0', 'Normal tests require the adopted registry loader');
+assert.ok(isExpandedNames, 'Installed loader must support plain TSV and JSON imports');
+const isLegacyLoader = false;
 
 const ROOT = path.join('C:', 'projects', 'mcdev');
 
@@ -137,20 +168,36 @@ describe('parseContextFilePath — data files', () => {
         ['Customers.mcdatabase.csv', 'Customers.mcdatabase'],
         ['Customers.mcdata.part1.csv', 'Customers'],
         ['Customers.CSV', 'Customers'],
+        ['Customer.List.TsV', 'Customer.List'],
+        ['Orders%2FItem.JSON', 'Orders%2FItem'],
+        ['Customers.part1.json', 'Customers.part1'],
+        ['Customers.mcdata.part1.TSV', 'Customers'],
         ['Bad%ZZ.csv', 'Bad%ZZ'],
         ['Orders%2FItem.csv', 'Orders%2FItem'],
         ['Orders.mcdata.csv', 'Orders'],
     ]) {
-        it(`recognises explicit CSV selection ${filename}`, () => {
-            const filePath = abs('data', 'MyCred', 'MyBU', filename);
-            const result = parseContextFilePath(filePath, ROOT);
-            assert.equal(result?.deKey, key);
-            assert.equal(result?.filePath, filePath);
-            assert.equal(result?.credBu, 'MyCred/MyBU');
-        });
+        it(
+            `recognises explicit data selection ${filename}`,
+            {
+                skip:
+                    isLegacyLoader &&
+                    /^(Customer\.List\.TsV|Orders%2FItem\.JSON|Customers\.part1\.json)$/u.test(
+                        filename
+                    )
+                        ? 'Released loader 4.0.0 supports plain CSV only'
+                        : false,
+            },
+            () => {
+                const filePath = abs('data', 'MyCred', 'MyBU', filename);
+                const result = parseContextFilePath(filePath, ROOT);
+                assert.equal(result?.deKey, key);
+                assert.equal(result?.filePath, filePath);
+                assert.equal(result?.credBu, 'MyCred/MyBU');
+            }
+        );
     }
 
-    for (const filename of ['.csv', 'Customers.tsv', 'Customers.json']) {
+    for (const filename of ['.csv', '.tsv', '.json', 'Customers.xml']) {
         it(`rejects plain unsupported selection ${filename}`, () => {
             assert.equal(
                 parseContextFilePath(abs('data', 'MyCred', 'MyBU', filename), ROOT),

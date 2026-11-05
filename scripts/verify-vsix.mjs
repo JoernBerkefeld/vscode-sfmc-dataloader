@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
 
@@ -73,10 +73,48 @@ await new Promise((resolve, reject) => {
     });
 });
 const cli = path.join(temporary, 'extension/out/mcdata.bundled.cjs');
+const archiveHash = createHash('sha256').update(readFileSync(archive)).digest('hex');
+const cliHash = createHash('sha256').update(readFileSync(cli)).digest('hex');
+console.log(`VSIX sha256=${archiveHash}; extracted CLI sha256=${cliHash}`);
+for (const filename of ['mcdata.bundled.cjs', 'extension.js']) {
+    const digest = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
+    assert.equal(
+        digest(path.join(temporary, 'extension/out', filename)),
+        digest(path.join(root, 'out', filename)),
+        `Extracted ${filename} differs from the production build`
+    );
+}
+if (process.env.SFMC_REQUIRE_EXPANDED_LOADER) {
+    assert.equal(cliHash, process.env.SFMC_CANDIDATE_CLI_SHA256, 'Archive CLI differs from candidate build');
+    const extensionHash = createHash('sha256')
+        .update(readFileSync(path.join(temporary, 'extension/out/extension.js')))
+        .digest('hex');
+    assert.equal(extensionHash, process.env.SFMC_CANDIDATE_EXTENSION_SHA256, 'Archive extension differs from candidate build');
+    console.log(`Extracted extension sha256=${extensionHash}`);
+}
 const manifest = JSON.parse(readFileSync(path.join(temporary, 'extension/package.json'), 'utf8'));
 const sourceManifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
 assert.equal(manifest.version, sourceManifest.version);
-assert.equal(manifest.devDependencies['sfmc-dataloader'], '^4.0.0');
+for (const menu of ['explorer/context', 'editor/title/context', 'editor/context']) {
+    const when = manifest.contributes.menus[menu][0].when;
+    const patterns = [...when.matchAll(/resourceFilename =~ \/([^/]+)\//g)].map((match) => new RegExp(match[1]));
+    for (const name of ['Customer.csv', 'Customer.TsV', 'Customer.JsOn']) {
+        assert.ok(patterns.some((pattern) => pattern.test(name)), `${menu}: ${name}`);
+    }
+}
+assert.equal(manifest.devDependencies['sfmc-dataloader'], '^4.1.0');
+assert.equal(manifest.devDependencies['sfmc-dataloader'], sourceManifest.devDependencies['sfmc-dataloader']);
+const lock = JSON.parse(readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
+assert.equal(lock.packages[''].devDependencies['sfmc-dataloader'], '^4.1.0');
+assert.equal(lock.packages['node_modules/sfmc-dataloader'].version, '4.1.0');
+assert.equal(
+    lock.packages['node_modules/sfmc-dataloader'].resolved,
+    'https://registry.npmjs.org/sfmc-dataloader/-/sfmc-dataloader-4.1.0.tgz'
+);
+assert.equal(
+    JSON.parse(readFileSync(path.join(root, 'node_modules/sfmc-dataloader/package.json'), 'utf8')).version,
+    '4.1.0'
+);
 assert.equal(manifest.engines.vscode, '^1.101.0');
 assert.equal(
     manifest.contributes.configuration.properties['sfmcData.skipEmptyLines'].type,
@@ -88,7 +126,7 @@ assert.equal(
 );
 assert.equal(
     execFileSync(process.execPath, [cli, '--version'], { cwd: temporary, encoding: 'utf8' }).trim(),
-    '4.0.0'
+    '4.1.0'
 );
 assert.match(
     execFileSync(process.execPath, [cli, '--help'], { cwd: temporary, encoding: 'utf8' }),
@@ -171,10 +209,10 @@ const project = process.argv[2];
 const cli = process.argv[3];
 const mode = process.argv[4];
 const expected = [{id:'1',value:'first'},{id:'2',value:'last'}];
-const file = path.join(project, 'Customer.List.csv');
+const file = path.join(project, mode === 'tsv' ? 'Customer.List.TsV' : mode === 'json' ? 'Customer.List.JsOn' : 'Customer.List.csv');
 fs.writeFileSync(path.join(project,'.mcdatarc.json'),JSON.stringify({credentials:{C:{businessUnits:{B:123}}}}));
 fs.writeFileSync(path.join(project,'.mcdata-auth.json'),JSON.stringify({C:{client_id:'synthetic',client_secret:'synthetic',auth_url:'https://example.invalid/'}}));
-fs.writeFileSync(file,'id,value,,\\n1,first,,\\n,,,\\n2,last,,\\n,,,\\n');
+fs.writeFileSync(file, mode === 'json' ? JSON.stringify(expected) : mode === 'tsv' ? 'id\\tvalue\\n1\\tfirst\\n2\\tlast\\n' : 'id,value,,\\n1,first,,\\n,,,\\n2,last,,\\n,,,\\n');
 const args = ['import','C/B','--project',project,'--file',file];
 if (mode === 'optout') args.push('--no-skip-empty-lines');
 if (mode === 'invalid') {
@@ -207,7 +245,21 @@ process.argv=[process.execPath,cli,...args];
 executable._compile(source.replace(seam,'Object.assign(this,globalThis.__vsixMockSdk)'),cli);
 `
 );
-for (const mode of ['default', 'optout', 'invalid']) {
+const legacyMode = process.env.SFMC_VERIFY_LEGACY_VSIX === '1';
+assert.ok(
+    !(legacyMode && process.env.SFMC_REQUIRE_EXPANDED_LOADER),
+    'Legacy VSIX verification cannot be combined with required candidate verification'
+);
+console.log(
+    legacyMode
+        ? 'Legacy VSIX verification: TSV/JSON import behavior is not verified.'
+        : 'Expanded VSIX verification: all import modes are required.'
+);
+for (const mode of ['default', 'optout', 'invalid', 'tsv', 'json']) {
+    if (legacyMode && (mode === 'tsv' || mode === 'json')) {
+        console.log(`SKIP ${mode}: explicitly requested legacy mode; archive capability not determined`);
+        continue;
+    }
     const project = path.join(temporary, `actual-import-${mode}`);
     mkdirSync(project);
     const result = spawnSync(process.execPath, [importCheck, project, cli, mode], {
@@ -217,9 +269,10 @@ for (const mode of ['default', 'optout', 'invalid']) {
     });
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     assert.match(result.stdout, /Extracted fallback actual import passed/);
-    if (mode !== 'invalid') assert.match(result.stdout, /cleanup|removed|padding/i);
+    if (mode === 'default' || mode === 'optout') assert.match(result.stdout, /cleanup|removed|padding/i);
     console.log(result.stdout.trim());
 }
+// Supplemental installed-library probe only: this is not extracted VSIX evidence.
 // Exercise the same loader/SDK graph used by in-process cache refresh in a relocated CJS bundle.
 const probe = path.join(temporary, 'library.cjs');
 await esbuild.build({
