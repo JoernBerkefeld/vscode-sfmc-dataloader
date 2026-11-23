@@ -365,7 +365,9 @@
         "prepare": "husky || true",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
-        "test": "node --require ./out/test/test/registerVscodeMock.js --test out/test/**/*.test.js && node ./scripts/validate-telemetry-catalog.mjs"
+        "test": "node --require ./out/test/test/registerVscodeMock.js --test out/test/**/*.test.js && node ./scripts/validate-telemetry-catalog.mjs",
+        "verify:own-dependencies-latest": "node scripts/verify-own-dependencies-latest.mjs",
+        "preversion": "npm run verify:own-dependencies-latest"
     },
     "lint-staged": {
         "*.{js,mjs,cjs,ts}": [
